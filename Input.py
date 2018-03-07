@@ -19,51 +19,13 @@ home_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/RiskSt
 
 sdl = SDL.SODLoader(data_root=home_dir)
 
-def create_mammo_mask(image, threshold=2, size_denominator=45):
 
-    """
-
-    :param image:
-    :param threshold:
-    :param size_denominator:
-    :return:
-    """
-
-    # Create the mask
-    mask = np.copy(image)
-
-    # Apply gaussian blur to smooth the image
-    mask = cv2.GaussianBlur(mask, (5, 5), 0)
-    sdl.display_single_image(mask, title='Blur')
-    # mask = cv2.bilateralFilter(mask.astype(np.float32),9,75,75)
-
-    # Threshold the image
-    mask = np.squeeze(mask > threshold)
-    sdl.display_single_image(mask, title='Threshold')
-
-    # Define the CV2 structuring element
-    radius_close = np.round(mask.shape[1] / size_denominator).astype('int16')
-    kernel_close = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(radius_close, radius_close))
-
-    # Apply morph close
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close)
-    sdl.display_single_image(mask, title='close')
-
-    # Invert mask
-    mask = ~mask
-    sdl.display_single_image(mask, title='Inverted')
-
-    # Add 2
-    mask += 2
-    sdl.display_single_image(mask, title='Plus2')
-
-    return mask
-
-def pre_process(warps):
+def pre_process(warps, box_dims=512):
 
     """
     Loads the files to a protobuf
     :param warps:
+    :param box_dims: dimensions of the saved images
     :return:
     """
 
@@ -73,7 +35,7 @@ def pre_process(warps):
     print (len(filenames), 'Base Files: ', filenames)
 
     # Global variables
-    display, writer, counter, data, index, pt = [], [], [None, None], {}, 0, 0
+    display, counter, data, index, pt = [], [0, 0], {}, 0, 0
 
     for file in filenames:
 
@@ -84,35 +46,39 @@ def pre_process(warps):
         if 'Normal' in class_raw: label = 0
         else: label = 1
 
-        # load image
-        image, accno, dims, _, _ = sdl.load_DICOM_2D(file)
+        # Load and resize image
+        try: image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
+        except:
+            print ("Failed to load: ", file)
+            continue
 
-        sdl.display_single_image(image, title='Image')
-        create_mammo_mask(image)
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
 
-        # TODO test
-        print (image.shape, accno, dims)
-        pt +=1
-        if pt>5: break
+        # Create and apply mask/labels
+        mask = sdl.create_mammo_mask(image)
+        label_data = np.multiply(mask.astype(np.uint8), (label+1))
 
-    #     # Create background mask
-    #
-    #     # Save an example
-    #     data[index] = {'data': box, 'patient': patient, 'file': file, 'age': age, 'dx': dx, 'label': label,
-    #                    'label2': label2, 'sex': sex, 'race': race, 'race_name': race_name, 'case': case, 'nerve': nerve}
-    #
-    #     # Increment counter
-    #     index += 1
-    #
-    #     # Done with this patient
-    #     pt += 1
-    #
-    # # # Done with all patients
-    # print ('Made %s boxes from %s patients. Class counts: %s' %(index, pt, counter))
-    #
-    # # Save the data
-    # sdl.save_tfrecords(data, 1, file_root='data/Breast_')
-    # sdl.save_dict_filetypes(data[0])
+        # Normalize image, mean/std: 835.3 1189.5
+        image = (image - 835.3) / 1189.5
+        image *= mask
+
+        # Save an example
+        data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.uint8), 'file': file, 'shapex': shape[0],
+                       'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': class_raw, 'label': label, 'accno': accno}
+
+        # Increment counter
+        index += 1
+        counter[label] += 1
+
+        # Done with this patient
+        pt += 1
+
+    # # Done with all patients
+    print ('Made %s boxes from %s patients. Class counts: %s' %(index, pt, counter))
+
+    # Save the data
+    sdl.save_tfrecords(data, 4, file_root='data/Breast_')
+    sdl.save_dict_filetypes(data[0])
 
 
 def load_protobuf():
