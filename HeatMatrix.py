@@ -87,7 +87,7 @@ def forward_pass(images, phase_train):
     print ('-'*14, dconv)
 
     dconv = sdn.deconvolution('Dconv4', dconv, 2, 32, S=2, phase_train=phase_train, concat=False, concat_var=conv3, out_shape=[FLAGS.batch_size, 64, 64, 32])
-    dconv = sdn.residual_layer('Dconv4b', dconv, 3, 32, phase_train=phase_train)
+    dconv = sdn.residual_layer('Dconv4b', dconv, 3, 32, S=1, phase_train=phase_train)
     print ('-'*22, dconv)
 
     dconv = sdn.deconvolution('Dconv5', dconv, 2, 16, S=2, phase_train=phase_train, concat=False, concat_var=conv2, out_shape=[FLAGS.batch_size, 128, 128, 16])

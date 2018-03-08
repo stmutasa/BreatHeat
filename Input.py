@@ -107,6 +107,7 @@ def load_protobuf():
 
     # Reshape image
     data['data'] = tf.image.resize_images(data['data'], [FLAGS.network_dims, FLAGS.network_dims])
+    data['label_data'] = tf.image.resize_images(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims])
 
     # Randomly flip
     def flip(mode=None):
@@ -160,6 +161,7 @@ def load_validation_set():
 
     # Reshape image
     data['data'] = tf.image.resize_images(data['data'], [FLAGS.network_dims, FLAGS.network_dims])
+    data['label_data'] = tf.image.resize_images(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims])
 
     # Display the images
     tf.summary.image('Test IMG', tf.reshape(data['data'], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 4)
