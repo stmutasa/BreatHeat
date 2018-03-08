@@ -117,17 +117,26 @@ def total_loss(logitz, labelz, num_classes=2, loss_type=None):
     """
 
     # Reduce dimensionality
-    labels, logits = tf.cast(tf.squeeze(labelz), tf.uint8), tf.squeeze(logitz)
+    labelz, logits = tf.squeeze(labelz), tf.squeeze(logitz)
 
     # Summary images
     im_num = int(FLAGS.batch_size / 2)
-    tf.summary.image('Labels', tf.reshape(tf.cast(labels[im_num], tf.float32), shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-    tf.summary.image('Logits', tf.reshape(logitz[im_num, : , : , 2], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
+    tf.summary.image('Labels', tf.reshape(tf.cast(labelz[im_num], tf.float32), shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
+    tf.summary.image('Logits', tf.reshape(logitz[im_num, : , : , 1], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
 
     if loss_type=='DICE':
 
+        # Remove background label
+        labels = tf.cast(labelz > 1, tf.uint8)
+
         # Make labels one hot
         labels = tf.cast(tf.one_hot(labels, depth=FLAGS.num_classes, dtype=tf.uint8), tf.float32)
+
+        # Generate mask
+        mask = tf.expand_dims(tf.cast(labelz > 0, tf.float32), -1)
+
+        # Apply mask
+        logits, labels = logitz * mask, labels * mask
 
         # Flatten
         logits = tf.reshape(logits, [-1, num_classes])
@@ -157,7 +166,13 @@ def total_loss(logitz, labelz, num_classes=2, loss_type=None):
     else:
 
         # Make labels one hot
-        labels = tf.cast(tf.one_hot(labels, depth=FLAGS.num_classes, dtype=tf.uint8), tf.float32)
+        labels = tf.cast(tf.one_hot(labelz, depth=FLAGS.num_classes, dtype=tf.uint8), tf.float32)
+
+        # Generate mask
+        mask = tf.expand_dims(tf.cast(labelz > 0, tf.float32), -1)
+
+        # Apply mask
+        logits, labels = logitz * mask, labels * mask
 
         # Flatten
         logits = tf.reshape(logitz, [-1, num_classes])

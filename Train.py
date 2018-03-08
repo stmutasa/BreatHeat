@@ -18,7 +18,7 @@ _author_ = 'Simi'
 FLAGS = tf.app.flags.FLAGS
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes + 1 for background""")
+tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes + 1 for background""")
 tf.app.flags.DEFINE_string('test_files', '0', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
@@ -160,9 +160,6 @@ def train():
 
                         # Save the checkpoint
                         saver.save(sess, checkpoint_file)
-
-                        # Sleep an amount of time to let testing catch up
-                        time.sleep(7)
 
 
 def main(argv=None):  # pylint: disable=unused-argument
