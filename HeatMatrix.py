@@ -122,7 +122,7 @@ def total_loss(logitz, labelz, num_classes=2, loss_type=None):
     # Summary images
     im_num = int(FLAGS.batch_size / 2)
     tf.summary.image('Labels', tf.reshape(tf.cast(labels[im_num], tf.float32), shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-    tf.summary.image('Logits', tf.reshape(logitz[im_num], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 3]), 2)
+    tf.summary.image('Logits', tf.reshape(logitz[im_num, : , : , 2], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
 
     if loss_type=='DICE':
 

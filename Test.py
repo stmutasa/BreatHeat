@@ -11,6 +11,9 @@ import numpy as np
 import tensorflow as tf
 import SODTester as SDT
 import tensorflow.contrib.slim as slim
+import SODLoader as SDL
+
+sdl = SDL.SODLoader(data_root='data/')
 
 _author_ = 'Simi'
 
@@ -19,12 +22,12 @@ FLAGS = tf.app.flags.FLAGS
 
 # Group 1: 3796, Group 2 3893
 # 2 class: 2547 and 2457
-tf.app.flags.DEFINE_integer('epoch_size', 2547, """Test examples: OF: 508""")
-tf.app.flags.DEFINE_integer('batch_size', 283, """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes""")
-tf.app.flags.DEFINE_string('test_files', 'G1', """Files for testing have this name""")
-tf.app.flags.DEFINE_integer('box_dims', 256, """dimensions of the input pictures""")
-tf.app.flags.DEFINE_integer('network_dims', 128, """the dimensions fed into the network""")
+tf.app.flags.DEFINE_integer('epoch_size', 370, """Test examples: OF: 508""")
+tf.app.flags.DEFINE_integer('batch_size', 74, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes""")
+tf.app.flags.DEFINE_string('test_files', '0', """Files for testing have this name""")
+tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
+tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 
 # Hyperparameters:
 tf.app.flags.DEFINE_float('dropout_factor', 1.0, """ p value for the dropout layer""")
@@ -34,7 +37,7 @@ tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the 
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Dense_2CL/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Base_Res/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -51,17 +54,10 @@ def eval():
         phase_train = tf.placeholder(tf.bool)
 
         # Build a graph that computes the prediction from the inference model (Forward pass)
-        logits, _, _ = network.forward_pass_dense(valid['data'], phase_train=phase_train)
+        logits, _ = network.forward_pass(valid['data'], phase_train=phase_train)
 
         # To retreive labels
-        if FLAGS.num_classes ==2: labels = valid['label2']
-        else: labels = valid['label']
-
-        # Merge the summaries
-        all_summaries = tf.summary.merge_all()
-
-        # Initialize the handle to the summary writer in our training directory
-        summary_writer = tf.summary.FileWriter(FLAGS.train_dir + 'Test_' + FLAGS.RunInfo)
+        labels = valid['label_data']
 
         # Initialize variables operation
         var_init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
@@ -106,8 +102,8 @@ def eval():
                 max_steps = int(FLAGS.epoch_size / FLAGS.batch_size)
 
                 # Define tester class instance
-                if FLAGS.num_classes != 2: sdt = SDT.SODTester(False, False)
-                else: sdt = SDT.SODTester(True, False)
+                sdt = SDT.SODTester(False, False)
+                display_lab, display_log, display_img = [], [], []
 
                 # Use slim to handle queues:
                 with slim.queues.QueueRunners(sess):
@@ -115,62 +111,21 @@ def eval():
                     for i in range(max_steps):
 
                         # Load some metrics for testing
-                        lbl1, logtz, serz = sess.run([labels, logits, valid['patient']], feed_dict={phase_train: False})
+                        lbl1, logtz, imgz, serz = sess.run([labels, logits, valid['data'], valid['patient']], feed_dict={phase_train: False})
 
                         # Combine predictions
-                        if i == 0: label_track, logit_track, unique = lbl1, logtz, serz
-                        else: label_track, logit_track, unique = np.concatenate((label_track, lbl1)), np.concatenate((logit_track, logtz)), np.concatenate((unique, serz))
+                        if i == 0: display_lab, display_log, display_img = lbl1, logtz, imgz
+                        else: display_lab, display_log, display_img = np.concatenate((display_lab, lbl1)), np.concatenate((display_log, logtz)), np.concatenate((display_img, imgz))
+                        print(display_lab.shape, display_log.shape, display_img.shape)
 
                     # Retreive metrics
-                    print ("Number of Examples: ", label_track.shape, logit_track.shape, unique.shape)
-                    #_, labba, logga = sdt.combine_predictions(label_track, logit_track, unique, label_track.shape[0])
+                    label_track, logit_track, img_track = np.squeeze(display_lab), np.squeeze(display_log[:,:,:,2]), np.squeeze(display_img)
+                    print ("Number of Examples: ", label_track.shape, logit_track.shape, img_track.shape)
 
-                    if FLAGS.num_classes==2:
-                        # sdt.calculate_metrics(logga, labba, 1, i, False)
-                        sdt.calculate_metrics(logit_track, label_track, 1, i, False)
-                        sdt.retreive_metrics_classification(Epoch)
-                    else:
-                        sdt.calc_multiclass_square_metrics(logit_track, label_track, FLAGS.num_classes)
-                        sdt.calculate_multiclass_metrics(logit_track, label_track, 1, FLAGS.num_classes, True)
-
-                    print ('------ Current Best AUC: %.4f (Epoch: %s) --------' %(best_MAE, best_epoch))
-
-                    # Lets save if they win accuracy
-                    if sdt.AUC >= best_MAE:
-
-                        # Save the checkpoint
-                        print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
-
-                        # Define the filename
-                        file = ('Epoch_%s_AUC_%0.3f' % (Epoch, sdt.AUC))
-
-                        # Define the checkpoint file:
-                        checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo, file)
-
-                        # Save the checkpoint
-                        saver.save(sess, checkpoint_file)
-
-                        # Save a new best MAE
-                        best_MAE = sdt.AUC
-                        best_epoch = Epoch
-
-            # Break if this is the final checkpoint
-            if 'Final' in Epoch: break
-
-            # Print divider
-            print('-' * 70)
-
-            # Otherwise check folder for changes
-            filecheck = glob.glob(FLAGS.train_dir + FLAGS.RunInfo + '*')
-            newfilec = filecheck
-
-            # Sleep if no changes
-            while filecheck == newfilec:
-                # Sleep an amount of time proportional to the epoch size
-                time.sleep(6)
-
-                # Recheck the folder for changes
-                newfilec = glob.glob(FLAGS.train_dir + FLAGS.RunInfo + '*')
+                    # Display volumes
+                    sdl.display_volume(label_track)
+                    sdl.display_volume(logit_track)
+                    sdl.display_volume(img_track, True)
 
 
 def main(argv=None):  # pylint: disable=unused-argument

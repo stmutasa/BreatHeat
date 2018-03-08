@@ -62,6 +62,9 @@ def pre_process(warps, box_dims=512):
         image = (image - 835.3) / 1189.5
         image *= mask
 
+        # For display purposes only
+        label_data[0,0], label_data[0,1] = 1, 2
+
         # Save an example
         data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
                        'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': class_raw, 'label': label, 'accno': accno}
@@ -121,7 +124,6 @@ def load_protobuf():
     data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random_uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(2), lambda: flip(0))
 
     # Random contrast and brightness
-    tf.summary.image('Pre-Contrast', tf.reshape(data['data'], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 4)
     data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
     data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
 

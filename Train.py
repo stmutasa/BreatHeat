@@ -28,7 +28,7 @@ tf.app.flags.DEFINE_integer('epoch_size', 1108, """How many images were loaded""
 tf.app.flags.DEFINE_integer('num_epochs', 200, """Number of epochs to run""")
 tf.app.flags.DEFINE_integer('print_interval', 1, """How often to print a summary to console during training""")
 tf.app.flags.DEFINE_integer('checkpoint_interval', 20, """How many Epochs to wait before saving a checkpoint""")
-tf.app.flags.DEFINE_integer('batch_size', 8, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('batch_size', 16, """Number of images to process in a batch.""")
 
 # Regularizers
 tf.app.flags.DEFINE_float('dropout_factor', 0.75, """ Keep probability""")
@@ -53,7 +53,7 @@ def train():
     with tf.Graph().as_default(), tf.device('/gpu:' + str(FLAGS.GPU)):
 
         # Get a dictionary of our images, id's, and labels here. Use the CPU
-        images, _ = network.inputs(skip=True)
+        with tf.device('/cpu:0'): images, _ = network.inputs(skip=True)
 
         # Define phase of training
         phase_train = tf.placeholder(tf.bool)
