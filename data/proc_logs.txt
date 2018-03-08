@@ -1,0 +1,2 @@
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/RiskStudy/Healthy/Normal/879/ser23662img00001.dcm
+Made 1478 boxes from 1478 patients. Class counts: [1263, 215]
