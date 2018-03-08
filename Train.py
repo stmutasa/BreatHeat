@@ -9,7 +9,7 @@ import time                                 # to retreive current time
 import numpy as np
 import tensorflow.contrib.slim as slim
 
-import PathMatrix as network
+import HeatMatrix as network
 import tensorflow as tf
 
 _author_ = 'Simi'
@@ -18,18 +18,17 @@ _author_ = 'Simi'
 FLAGS = tf.app.flags.FLAGS
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes""")
-tf.app.flags.DEFINE_string('test_files', 'G1', """Files for testing have this name""")
-tf.app.flags.DEFINE_integer('box_dims', 256, """dimensions of the input pictures""")
-tf.app.flags.DEFINE_integer('network_dims', 128, """the dimensions fed into the network""")
+tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes + 1 for background""")
+tf.app.flags.DEFINE_string('test_files', '0', """Files for testing have this name""")
+tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
+tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 
-# Group 1: 3796, Group 2 3893
-# 2 class: 2547 and 2457
-tf.app.flags.DEFINE_integer('epoch_size', 2457, """How many images were loaded""")
-tf.app.flags.DEFINE_integer('num_epochs', 501, """Number of epochs to run""")
-tf.app.flags.DEFINE_integer('print_interval', 5, """How often to print a summary to console during training""")
-tf.app.flags.DEFINE_integer('checkpoint_interval', 50, """How many Epochs to wait before saving a checkpoint""")
-tf.app.flags.DEFINE_integer('batch_size', 24, """Number of images to process in a batch.""")
+#
+tf.app.flags.DEFINE_integer('epoch_size', 1108, """How many images were loaded""")
+tf.app.flags.DEFINE_integer('num_epochs', 200, """Number of epochs to run""")
+tf.app.flags.DEFINE_integer('print_interval', 1, """How often to print a summary to console during training""")
+tf.app.flags.DEFINE_integer('checkpoint_interval', 20, """How many Epochs to wait before saving a checkpoint""")
+tf.app.flags.DEFINE_integer('batch_size', 8, """Number of images to process in a batch.""")
 
 # Regularizers
 tf.app.flags.DEFINE_float('dropout_factor', 0.75, """ Keep probability""")
@@ -44,7 +43,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Dense_2CL/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Base_Res/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -60,13 +59,13 @@ def train():
         phase_train = tf.placeholder(tf.bool)
 
         # Build a graph that computes the prediction from the inference model (Forward pass)
-        logits, l2loss, _ = network.forward_pass_dense(images['data'], phase_train=phase_train)
+        logits, l2loss = network.forward_pass(images['data'], phase_train=phase_train)
 
         # Labels
-        labels = images['label2']
+        labels = images['label_data']
 
         # Calculate the objective function loss
-        SCE_loss = network.total_loss(logits, labels)
+        SCE_loss = network.total_loss(logits, labels, FLAGS.num_classes, 'DICE')
 
         # Add in L2 Regularization
         loss = tf.add(SCE_loss, l2loss, name='loss')
@@ -133,7 +132,7 @@ def train():
                         timer = 0
 
                         # Load some metrics
-                        lbl1, logtz, loss1, loss2, tot = sess.run([labels, logits, SCE_loss, l2loss, loss], feed_dict={phase_train: True})
+                        loss1, loss2, tot = sess.run([SCE_loss, l2loss, loss], feed_dict={phase_train: True})
 
                         # use numpy to print only the first sig fig
                         np.set_printoptions(precision=2)
@@ -141,10 +140,6 @@ def train():
                         # Print the data
                         print('-'*70, '\nEpoch %d, L2 Loss: = %.3f (%.1f eg/s;), Total Loss: %.3f SCE: %.4f'
                               % (Epoch, loss2, FLAGS.batch_size / elapsed, tot, loss1))
-
-                        # Retreive and print the labels and logits
-                        print('Labels: %s' % np.squeeze(lbl1.astype(np.int8))[:20])
-                        print('Logits: %s' % np.squeeze(np.argmax(logtz.astype(np.float), axis=1))[:20])
 
                         # Run a session to retrieve our summaries
                         summary = sess.run(all_summaries, feed_dict={phase_train: True})

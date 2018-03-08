@@ -4,7 +4,7 @@ from __future__ import absolute_import  # import multi line and Absolute/Relativ
 from __future__ import division  # change the division operator to output float if dividing two integers
 from __future__ import print_function  # use the print function from python 3
 
-import PathMatrix as network
+import HeatMatrix as network
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import SODTester as SDT

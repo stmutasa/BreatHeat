@@ -2,7 +2,7 @@
 Does our loading and preprocessing of files to a protobuf
 """
 
-import os, glob, cv2
+import glob
 
 import numpy as np
 import tensorflow as tf
@@ -63,7 +63,7 @@ def pre_process(warps, box_dims=512):
         image *= mask
 
         # Save an example
-        data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.uint8), 'file': file, 'shapex': shape[0],
+        data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
                        'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': class_raw, 'label': label, 'accno': accno}
 
         # Increment counter
@@ -95,8 +95,7 @@ def load_protobuf():
 
     # Define the filenames to remove
     for i in range(0, len(filenames1)):
-        if FLAGS.test_files not in filenames1[i]:
-            filenames.append(filenames1[i])
+        if FLAGS.test_files not in filenames1[i]: filenames.append(filenames1[i])
 
     # Show the file names
     print('Training files: %s' % filenames)
@@ -104,21 +103,31 @@ def load_protobuf():
     # Load the dictionary
     data = sdl.load_tfrecords(filenames, FLAGS.box_dims, tf.float32, channels=1)
 
-    # Image augmentation
-    angle = tf.random_uniform([1], -1.78, 1.571)
-
-    # First randomly rotate
-    data['data'] = tf.contrib.image.rotate(data['data'], angle)
-
-    # Then randomly flip
-    data['data'] = tf.image.random_flip_left_right(tf.image.random_flip_up_down(data['data']))
-
-    # Color image randomization
-    tf.summary.image('Pre-Contrast', tf.reshape(data['data'], shape=[1, FLAGS.box_dims, FLAGS.box_dims, 1]), 4)
-    data['data'] = tf.image.random_contrast(data['data'], lower=0.9, upper=1.1)
+    # Data Augmentation ------------------
 
     # Reshape image
     data['data'] = tf.image.resize_images(data['data'], [FLAGS.network_dims, FLAGS.network_dims])
+
+    # Randomly flip
+    def flip(mode=None):
+
+        if mode == 1: img, lbl = tf.image.flip_up_down(data['data']), tf.image.flip_up_down(data['label_data'])
+        elif mode == 2: img, lbl = tf.image.flip_left_right(data['data']), tf.image.flip_left_right(data['label_data'])
+        else: img, lbl = data['data'], data['label_data']
+        return img, lbl
+
+    data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random_uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(1), lambda: flip(0))
+    data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random_uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(2), lambda: flip(0))
+
+    # Random contrast and brightness
+    tf.summary.image('Pre-Contrast', tf.reshape(data['data'], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 4)
+    data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
+    data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
+
+    # Random gaussian noise
+    T_noise = tf.random_uniform([1], 0, 0.2)
+    noise = tf.random_uniform(shape=[FLAGS.network_dims, FLAGS.network_dims, 1], minval=-T_noise, maxval=T_noise)
+    data['data'] = tf.add(data['data'], tf.cast(noise, tf.float32))
 
     # Display the images
     tf.summary.image('Train IMG', tf.reshape(data['data'], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 4)
@@ -142,8 +151,7 @@ def load_validation_set():
 
     # Retreive only the right filename
     for i in range(0, len(filenames1)):
-        if FLAGS.test_files in filenames1[i]:
-            filenames.append(filenames1[i])
+        if FLAGS.test_files in filenames1[i]: filenames.append(filenames1[i])
 
     print('Testing files: %s' % filenames)
 
@@ -157,5 +165,3 @@ def load_validation_set():
     tf.summary.image('Test IMG', tf.reshape(data['data'], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 4)
 
     return sdl.val_batches(data, FLAGS.batch_size)
-
-pre_process(1)
