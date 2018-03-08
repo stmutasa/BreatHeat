@@ -24,7 +24,7 @@ FLAGS = tf.app.flags.FLAGS
 # 2 class: 2547 and 2457
 tf.app.flags.DEFINE_integer('epoch_size', 370, """Test examples: OF: 508""")
 tf.app.flags.DEFINE_integer('batch_size', 74, """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes""")
+tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes""")
 tf.app.flags.DEFINE_string('test_files', '0', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
@@ -55,6 +55,7 @@ def eval():
 
         # Build a graph that computes the prediction from the inference model (Forward pass)
         logits, _ = network.forward_pass(valid['data'], phase_train=phase_train)
+        logits = tf.nn.softmax(logits)
 
         # To retreive labels
         labels = valid['label_data']
@@ -119,7 +120,7 @@ def eval():
                         print(display_lab.shape, display_log.shape, display_img.shape)
 
                     # Retreive metrics
-                    label_track, logit_track, img_track = np.squeeze(display_lab), np.squeeze(display_log[:,:,:,2]), np.squeeze(display_img)
+                    label_track, logit_track, img_track = np.squeeze(display_lab), np.squeeze(display_log[:,:,:,(FLAGS.num_classes-1)]), np.squeeze(display_img)
                     print ("Number of Examples: ", label_track.shape, logit_track.shape, img_track.shape)
 
                     # Display volumes
