@@ -158,7 +158,7 @@ def forward_pass(images, phase_train):
     print ('-'*30, dconv)
 
     # Output is a 1x1 box with 3 labels
-    Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False)
+    Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False, dropout=FLAGS.dropout_factor)
     print ('Logits: ', Logits)
 
     return Logits, sdn.calc_L2_Loss(FLAGS.l2_gamma)
