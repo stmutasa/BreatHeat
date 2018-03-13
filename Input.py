@@ -108,9 +108,16 @@ def load_protobuf():
 
     # Data Augmentation ------------------
 
-    # Reshape image
-    data['data'] = tf.image.resize_images(data['data'], [FLAGS.network_dims, FLAGS.network_dims])
-    data['label_data'] = tf.image.resize_images(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims])
+    # Random rotate
+    angle = tf.random_uniform([1], -0.45, 0.45)
+    data['data'], data['label_data'] = tf.contrib.image.rotate(data['data'], angle), tf.contrib.image.rotate(data['label_data'], angle)
+
+    # Random clip
+    resize_factor = int(FLAGS.network_dims/0.9)
+    data['data'] = tf.image.resize_images(data['data'], [resize_factor, resize_factor])
+    data['label_data'] = tf.image.resize_images(data['label_data'], [resize_factor, resize_factor])
+    data['data'] = tf.random_crop(data['data'], [FLAGS.network_dims, FLAGS.network_dims, 1])
+    data['label_data'] = tf.random_crop(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims, 1])
 
     # Randomly flip
     def flip(mode=None):
@@ -128,7 +135,7 @@ def load_protobuf():
     data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
 
     # Random gaussian noise
-    T_noise = tf.random_uniform([1], 0, 0.2)
+    T_noise = tf.random_uniform([1], 0, 0.1)
     noise = tf.random_uniform(shape=[FLAGS.network_dims, FLAGS.network_dims, 1], minval=-T_noise, maxval=T_noise)
     data['data'] = tf.add(data['data'], tf.cast(noise, tf.float32))
 

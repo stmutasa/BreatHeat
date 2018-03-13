@@ -24,7 +24,7 @@ tf.app.flags.DEFINE_string('data_dir', 'data/', """Path to the data directory.""
 sdn = SDN.SODMatrix()
 
 
-def forward_pass(images, phase_train):
+def forward_pass_fancy(images, phase_train):
 
     """
     This function builds the network architecture and performs the forward pass
@@ -96,6 +96,66 @@ def forward_pass(images, phase_train):
 
     dconv = sdn.deconvolution('Dconv6', dconv, 2, 8, S=2, phase_train=phase_train, concat=False, concat_var=conv1, out_shape=[FLAGS.batch_size, 256, 256, 8])
     dconv = sdn.convolution('Dconv6b', dconv, 3, 8, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
+
+    # Output is a 1x1 box with 3 labels
+    Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False)
+    print ('Logits: ', Logits)
+
+    return Logits, sdn.calc_L2_Loss(FLAGS.l2_gamma)
+
+
+def forward_pass(images, phase_train):
+
+    """
+    This function builds the network architecture and performs the forward pass
+    Two main architectures depending on where to insert the inception or residual layer
+    :param images: Images to analyze
+    :param phase_train1: bool, whether this is the training phase or testing phase
+    :return: logits: the predicted age from the network
+    :return: l2: the value of the l2 loss
+    """
+
+    print ('Input images: ', images)
+
+    # Network blocks
+    conv1 = sdn.convolution('Conv1', images, 3, 16, 1, phase_train=phase_train)
+    down = sdn.convolution('Down128', conv1, 3, 32, 2, phase_train=phase_train)
+    print('*' * 30, conv1, down)
+
+    conv2 = sdn.convolution('Conv2', down, 3, 32, 1, phase_train=phase_train)
+    down = sdn.convolution('Down64', conv2, 3, 64, 2, phase_train=phase_train)
+    print('*' * 22, conv2)
+
+    conv3 = sdn.convolution('Conv3', down, 3, 64, 1, phase_train=phase_train)
+    down = sdn.convolution('Down32', conv3, 3, 128, 2, phase_train=phase_train) # Now 32x32
+    print('*'*14,conv3)
+
+    conv4 = sdn.convolution('Conv4', down, 3, 128, 1, phase_train=phase_train)
+    down = sdn.convolution('Down16', conv4, 3, 256, 2, phase_train=phase_train)
+    print('*'*6,conv4)
+
+
+    # Bottom of the decoder: 16x16
+    conv5 = sdn.convolution('Bottom1', down, 3, 256, 1, phase_train=phase_train)
+    conv5 = sdn.convolution('Bottom2', conv5, 3, 256, 1, phase_train=phase_train)
+    conv5 = sdn.convolution('Bottom3', conv5, 3, 256, 1, phase_train=phase_train)
+
+    # Upsamples
+    dconv = sdn.deconvolution('Dconv2', conv5, 2, 128, S=2, phase_train=phase_train, concat=False, concat_var=conv4, out_shape=[FLAGS.batch_size, 32, 32, 128])
+    dconv = sdn.convolution('Dconv2b', dconv, 3, 128, S=1, phase_train=phase_train)
+    print('-' * 6, dconv)
+
+    dconv = sdn.deconvolution('Dconv3', dconv, 2, 64, S=2, phase_train=phase_train, concat=False, concat_var=conv3, out_shape=[FLAGS.batch_size, 64, 64, 64])
+    dconv = sdn.convolution('Dconv3b', dconv, 3, 64, S=1, phase_train=phase_train)
+    print ('-'*14, dconv)
+
+    dconv = sdn.deconvolution('Dconv4', dconv, 2, 32, S=2, phase_train=phase_train, concat=False, concat_var=conv2, out_shape=[FLAGS.batch_size, 128, 128, 32])
+    dconv = sdn.convolution('Dconv4b', dconv, 3, 32, S=1, phase_train=phase_train)
+    print ('-'*22, dconv)
+
+    dconv = sdn.deconvolution('Dconv5', dconv, 2, 16, S=2, phase_train=phase_train, concat=False, concat_var=conv1, out_shape=[FLAGS.batch_size, 256, 256, 16])
+    dconv = sdn.convolution('Dconv5b', dconv, 3, 16, S=1, phase_train=phase_train)
+    print ('-'*30, dconv)
 
     # Output is a 1x1 box with 3 labels
     Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False)
@@ -207,8 +267,8 @@ def backward_pass(total_loss):
     # Print summary of total loss
     tf.summary.scalar('Total_Loss', total_loss)
 
-    # Compute the gradients. NAdam optimizer came in tensorflow 1.2
-    opt = tf.contrib.opt.NadamOptimizer(learning_rate=FLAGS.learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2, epsilon=1e-8)
+    # Compute the gradients..2
+    opt = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
 
     # Compute the gradients
     gradients = opt.compute_gradients(total_loss)
