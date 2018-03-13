@@ -225,8 +225,11 @@ def total_loss(logitz, labelz, num_classes=2, loss_type=None):
 
     else:
 
+        # Remove background label
+        labels = tf.cast(labelz > 1, tf.uint8)
+
         # Make labels one hot
-        labels = tf.cast(tf.one_hot(labelz, depth=FLAGS.num_classes, dtype=tf.uint8), tf.float32)
+        labels = tf.cast(tf.one_hot(labels, depth=FLAGS.num_classes, dtype=tf.uint8), tf.float32)
 
         # Generate mask
         mask = tf.expand_dims(tf.cast(labelz > 0, tf.float32), -1)

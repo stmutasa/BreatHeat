@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Base/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Base_SCE/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -65,7 +65,7 @@ def train():
         labels = images['label_data']
 
         # Calculate the objective function loss
-        SCE_loss = network.total_loss(logits, labels, FLAGS.num_classes, 'DICE')
+        SCE_loss = network.total_loss(logits, labels, FLAGS.num_classes, 'Other')
 
         # Add in L2 Regularization
         loss = tf.add(SCE_loss, l2loss, name='loss')
