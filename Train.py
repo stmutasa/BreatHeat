@@ -31,19 +31,19 @@ tf.app.flags.DEFINE_integer('checkpoint_interval', 50, """How many Epochs to wai
 tf.app.flags.DEFINE_integer('batch_size', 16, """Number of images to process in a batch.""")
 
 # Regularizers
-tf.app.flags.DEFINE_float('dropout_factor', 0.8, """ Keep probability""")
+tf.app.flags.DEFINE_float('dropout_factor', 0.65, """ Keep probability""")
 tf.app.flags.DEFINE_float('l2_gamma', 1e-4, """ The gamma value for regularization loss""")
 tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the moving average tracker""")
 tf.app.flags.DEFINE_float('loss_factor', 1.0, """Penalty for missing a class is this times more severe""")
 
 # Hyperparameters to control the learning rate
-tf.app.flags.DEFINE_float('learning_rate', 1e-3, """Initial learning rate""")
+tf.app.flags.DEFINE_float('learning_rate', 3e-3, """Initial learning rate""")
 tf.app.flags.DEFINE_float('beta1', 0.9, """ The beta 1 value for the adam optimizer""")
 tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam optimizer""")
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Base_SCE/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Base_Res2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -59,7 +59,7 @@ def train():
         phase_train = tf.placeholder(tf.bool)
 
         # Build a graph that computes the prediction from the inference model (Forward pass)
-        logits, l2loss = network.forward_pass(images['data'], phase_train=phase_train)
+        logits, l2loss = network.forward_pass_fancy(images['data'], phase_train=phase_train)
 
         # Labels
         labels = images['label_data']
