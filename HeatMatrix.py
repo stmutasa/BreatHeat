@@ -324,7 +324,7 @@ def total_loss(logitz, labelz, num_classes=2, loss_type=None):
         labels = tf.cast(tf.reshape(labels, [-1, num_classes]), tf.float32)
 
         # Calculate the loss: Result is batch x 65k
-        loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
+        loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels, logits=logits)
 
         # Reduce the loss into a scalar
         loss = tf.reduce_mean(loss)
@@ -347,7 +347,7 @@ def backward_pass(total_loss):
     """
 
     # Get the tensor that keeps track of step in this graph or create one if not there
-    global_step = tf.contrib.framework.get_or_create_global_step()
+    global_step = tf.train.get_or_create_global_step()
 
     # Print summary of total loss
     tf.summary.scalar('Total_Loss', total_loss)
