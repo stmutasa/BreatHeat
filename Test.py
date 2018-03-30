@@ -37,7 +37,7 @@ tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the 
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Base_Res/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Extended/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -54,8 +54,8 @@ def eval():
         phase_train = tf.placeholder(tf.bool)
 
         # Build a graph that computes the prediction from the inference model (Forward pass)
-        logits, _ = network.forward_pass(valid['data'], phase_train=phase_train)
-        logits = tf.nn.softmax(logits)
+        logits, _ = network.forward_pass_extend(valid['data'], phase_train=phase_train)
+        # logits = tf.nn.softmax(logits)
 
         # To retreive labels
         labels = valid['label_data']
@@ -123,10 +123,16 @@ def eval():
                     label_track, logit_track, img_track = np.squeeze(display_lab), np.squeeze(display_log[:,:,:,(FLAGS.num_classes-1)]), np.squeeze(display_img)
                     print ("Number of Examples: ", label_track.shape, logit_track.shape, img_track.shape)
 
-                    # Display volumes
-                    sdl.display_volume(label_track)
-                    sdl.display_volume(logit_track)
-                    sdl.display_volume(img_track, True)
+                    # Normalize display
+                    # label_track[label_track > 0] = 1
+                    # logit_track *= label_track
+                    # for v in range (logit_track.shape[0]):
+                    #     logit_track[v] = (logit_track[v] - np.mean(logit_track[v]))/np.std(logit_track[v])
+                    #     logit_track[v][label_track[v]==0] == np.min(logit_track[v])
+
+                    # Display volume
+                    sdl.display_volume(logit_track, True, cmap='jet')
+                    # sdl.display_volume(img_track, True)
 
 
 def main(argv=None):  # pylint: disable=unused-argument

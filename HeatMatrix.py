@@ -104,6 +104,88 @@ def forward_pass_fancy(images, phase_train):
     return Logits, sdn.calc_L2_Loss(FLAGS.l2_gamma)
 
 
+def forward_pass_extend(images, phase_train):
+
+    """
+    This function builds the network architecture and performs the forward pass
+    Two main architectures depending on where to insert the inception or residual layer
+    :param images: Images to analyze
+    :param phase_train1: bool, whether this is the training phase or testing phase
+    :return: logits: the predicted age from the network
+    :return: l2: the value of the l2 loss
+    """
+
+    print ('Input images: ', images)
+
+    # Network blocks
+    conv1 = sdn.convolution('Conv1', images, 3, 8, 1, phase_train=phase_train)
+    conv1 = sdn.convolution('Conv1b', conv1, 3, 8, 1, phase_train=phase_train)
+    down = sdn.convolution('Down128', conv1, 2, 16, 2, phase_train=phase_train)
+    print('*' * 30, conv1, down)
+
+    conv2 = sdn.convolution('Conv2', down, 3, 16, 1, phase_train=phase_train)
+    conv2 = sdn.residual_layer('Conv2b', conv2, 3, 16, 1, phase_train=phase_train)
+    down = sdn.convolution('Down64', conv2, 2, 32, 2, phase_train=phase_train)
+    print('*' * 22, conv2)
+
+    conv3 = sdn.residual_layer('Conv3', down, 3, 32, 1, phase_train=phase_train)
+    conv3 = sdn.residual_layer('Conv3b', conv3, 3, 32, 1, phase_train=phase_train)
+    down = sdn.convolution('Down32', conv3, 2, 64, 2, phase_train=phase_train) # Now 32x32
+    print('*'*14,conv3)
+
+    conv4 = sdn.residual_layer('Conv4', down, 3, 64, 1, phase_train=phase_train)
+    conv4 = sdn.residual_layer('Conv4b', conv4, 3, 64, 1, phase_train=phase_train)
+    down = sdn.convolution('Down16', conv4, 2, 128, 2, phase_train=phase_train)
+    print('*'*6,conv4)
+
+    conv5 = sdn.inception_layer('Conv5', down, 128, 1, phase_train=phase_train)
+    conv5 = sdn.inception_layer('Conv5b', conv5, 128, 1, phase_train=phase_train)
+    down = sdn.convolution('Down8', conv5, 2, 256, 2, phase_train=phase_train)
+    print('*' * 3, conv5)
+
+    conv6 = sdn.inception_layer('Conv6', down, 256, phase_train=phase_train)
+    conv6 = sdn.inception_layer('Conv6b', conv6, 256, phase_train=phase_train)
+    down = sdn.convolution('Down4', conv6, 2, 512, 2, phase_train=phase_train)
+    print(conv6)
+
+    # Bottom of the decoder: 4x4
+    conv7 = sdn.inception_layer('Bottom1', down, 512, phase_train=phase_train)
+    conv7 = sdn.residual_layer('Bottom2', conv7, 3, 512, 1, dropout=FLAGS.dropout_factor, phase_train=phase_train)
+    conv7 = sdn.inception_layer('Bottom2', conv7, 512, phase_train=phase_train)
+
+    # Upsample 1
+    dconv = sdn.deconvolution('Dconv1', conv7, 2, 256, S=2, phase_train=phase_train, concat=False, concat_var=conv6, out_shape=[FLAGS.batch_size, 8, 8, 256])
+    dconv = sdn.inception_layer('Dconv1b', dconv, 256, phase_train=phase_train)
+    print('-'*3, dconv)
+
+    dconv = sdn.deconvolution('Dconv2', dconv, 2, 128, S=2, phase_train=phase_train, concat=False, concat_var=conv5, out_shape=[FLAGS.batch_size, 16, 16, 128])
+    dconv = sdn.inception_layer('Dconv2b', dconv, 128, phase_train=phase_train)
+    print('-' * 6, dconv)
+
+    dconv = sdn.deconvolution('Dconv3', dconv, 2, 64, S=2, phase_train=phase_train, concat=False, concat_var=conv4, out_shape=[FLAGS.batch_size, 32, 32, 64])
+    dconv = sdn.inception_layer('Dconv3b', dconv, 64, phase_train=phase_train)
+    print ('-'*14, dconv)
+
+    dconv = sdn.deconvolution('Dconv4', dconv, 2, 32, S=2, phase_train=phase_train, concat=False, concat_var=conv3, out_shape=[FLAGS.batch_size, 64, 64, 32])
+    dconv = sdn.residual_layer('Dconv4b', dconv, 3, 32, S=1, phase_train=phase_train)
+    print ('-'*22, dconv)
+
+    dconv = sdn.deconvolution('Dconv5', dconv, 2, 16, S=2, phase_train=phase_train, concat=False, concat_var=conv2, out_shape=[FLAGS.batch_size, 128, 128, 16])
+    dconv = sdn.residual_layer('Dconv5b', dconv, 3, 16, S=1, phase_train=phase_train)
+    print ('-'*30, dconv)
+
+    dconv = sdn.deconvolution('Dconv6', dconv, 2, 8, S=2, phase_train=phase_train, concat=False, concat_var=conv1, out_shape=[FLAGS.batch_size, 256, 256, 8])
+    dconv = sdn.residual_layer('Dconv6a', dconv, 3, 8, S=1, phase_train=phase_train)
+    dconv = sdn.residual_layer('Dconv6b', dconv, 3, 8, S=1, phase_train=phase_train)
+    dconv = sdn.residual_layer('Dconv6c', dconv, 3, 8, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
+
+    # Output is a 1x1 box with 3 labels
+    Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False)
+    print ('Logits: ', Logits)
+
+    return Logits, sdn.calc_L2_Loss(FLAGS.l2_gamma)
+
+
 def forward_pass(images, phase_train):
 
     """

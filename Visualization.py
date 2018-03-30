@@ -8,7 +8,6 @@ import HeatMatrix as network
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import SODTester as SDT
-import scikitplot as skplt
 
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import gen_nn_ops
@@ -40,7 +39,7 @@ tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the 
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Base_2CL/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Base_Res/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
