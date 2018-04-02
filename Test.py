@@ -24,7 +24,7 @@ FLAGS = tf.app.flags.FLAGS
 # 2 class: 2547 and 2457
 tf.app.flags.DEFINE_integer('epoch_size', 370, """Test examples: OF: 508""")
 tf.app.flags.DEFINE_integer('batch_size', 74, """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes""")
+tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes""")
 tf.app.flags.DEFINE_string('test_files', '0', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
@@ -37,7 +37,7 @@ tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the 
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Extended/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Extended3/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -55,7 +55,7 @@ def eval():
 
         # Build a graph that computes the prediction from the inference model (Forward pass)
         logits, _ = network.forward_pass_extend(valid['data'], phase_train=phase_train)
-        # logits = tf.nn.softmax(logits)
+        softmax = tf.nn.softmax(logits)
 
         # To retreive labels
         labels = valid['label_data']
@@ -105,6 +105,7 @@ def eval():
                 # Define tester class instance
                 sdt = SDT.SODTester(False, False)
                 display_lab, display_log, display_img = [], [], []
+                avg_softmax, ground_truth = [], []
 
                 # Use slim to handle queues:
                 with slim.queues.QueueRunners(sess):
@@ -112,7 +113,23 @@ def eval():
                     for i in range(max_steps):
 
                         # Load some metrics for testing
-                        lbl1, logtz, imgz, serz = sess.run([labels, logits, valid['data'], valid['patient']], feed_dict={phase_train: False})
+                        lbl1, logtz, imgz, serz, smx = sess.run([labels, logits, valid['data'], valid['patient'], softmax], feed_dict={phase_train: False})
+
+                        label_normalize, smx = np.copy(lbl1), np.squeeze(smx)
+
+                        # Null background to 0.5. Then Retreive average softmax score and compare to label
+                        for z in range (FLAGS.batch_size):
+
+                            ground_truth.append(np.amax(label_normalize[z]))
+                            label_normalize[z][label_normalize[z] ==0] = 0.5
+                            label_normalize[z][label_normalize[z] >0] = 1
+                            smx[z] *= label_normalize[z]
+                            avg_softmax.append(np.average(smx[z], axis=-1))
+                            print ('Label: %s, Softmaxes: %s' %(np.amax(label_normalize[z]), np.average(smx[z], axis=2)))
+
+                        # print ('Ground truth: ', ground_truth)
+                        # print ('Avg Softmax: ', avg_softmax)
+
 
                         # Combine predictions
                         if i == 0: display_lab, display_log, display_img = lbl1, logtz, imgz
@@ -124,11 +141,12 @@ def eval():
                     print ("Number of Examples: ", label_track.shape, logit_track.shape, img_track.shape)
 
                     # Normalize display
-                    # label_track[label_track > 0] = 1
-                    # logit_track *= label_track
-                    # for v in range (logit_track.shape[0]):
-                    #     logit_track[v] = (logit_track[v] - np.mean(logit_track[v]))/np.std(logit_track[v])
-                    #     logit_track[v][label_track[v]==0] == np.min(logit_track[v])
+                    label_track[label_track > 0] = 1
+                    logit_track *= label_track
+                    for v in range (logit_track.shape[0]):
+                        logit_track[v] = (logit_track[v] - np.mean(logit_track[v]))/np.std(logit_track[v])
+                        # logit_track[v][label_track[v]==0] == np.min(logit_track[v])
+                    logit_track *= label_track
 
                     # Display volume
                     sdl.display_volume(logit_track, True, cmap='jet')

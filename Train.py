@@ -18,7 +18,7 @@ _author_ = 'Simi'
 FLAGS = tf.app.flags.FLAGS
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes + 1 for background""")
+tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes + 1 for background""")
 tf.app.flags.DEFINE_string('test_files', '0', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Extended/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Extended3/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -65,7 +65,7 @@ def train():
         labels = images['label_data']
 
         # Calculate the objective function loss
-        SCE_loss = network.total_loss(logits, labels, FLAGS.num_classes, 'Other')
+        SCE_loss = network.total_loss(logits, labels, FLAGS.num_classes, 'DICE')
 
         # Add in L2 Regularization
         loss = tf.add(SCE_loss, l2loss, name='loss')
