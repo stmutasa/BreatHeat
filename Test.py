@@ -37,7 +37,7 @@ tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the 
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Extended3/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Extended_aug/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -115,42 +115,45 @@ def eval():
                         # Load some metrics for testing
                         lbl1, logtz, imgz, serz, smx = sess.run([labels, logits, valid['data'], valid['patient'], softmax], feed_dict={phase_train: False})
 
-                        label_normalize, smx = np.copy(lbl1), np.squeeze(smx)
+                        label_normalize, smx = np.copy(lbl1), np.squeeze(logtz)
 
                         # Null background to 0.5. Then Retreive average softmax score and compare to label
                         for z in range (FLAGS.batch_size):
 
                             ground_truth.append(np.amax(label_normalize[z]))
-                            label_normalize[z][label_normalize[z] ==0] = 0.5
                             label_normalize[z][label_normalize[z] >0] = 1
                             smx[z] *= label_normalize[z]
-                            avg_softmax.append(np.average(smx[z], axis=-1))
-                            print ('Label: %s, Softmaxes: %s' %(np.amax(label_normalize[z]), np.average(smx[z], axis=2)))
+                            avg_smx = np.average(np.reshape(smx[z], (-1, FLAGS.num_classes)), axis=0)
+                            avg_softmax.append(avg_smx)
+                            if np.amax(label_normalize[z]) == 2 or z%10 == 0:
+                                print ('Label: %s, Softmaxes: %s' %(np.amax(ground_truth[z]), avg_smx))
 
                         # print ('Ground truth: ', ground_truth)
                         # print ('Avg Softmax: ', avg_softmax)
+                        print('grp done')
 
 
-                        # Combine predictions
-                        if i == 0: display_lab, display_log, display_img = lbl1, logtz, imgz
-                        else: display_lab, display_log, display_img = np.concatenate((display_lab, lbl1)), np.concatenate((display_log, logtz)), np.concatenate((display_img, imgz))
-                        print(display_lab.shape, display_log.shape, display_img.shape)
+                    #     # Combine predictions
+                    #     if i == 0: display_lab, display_log, display_img = lbl1, logtz, imgz
+                    #     else: display_lab, display_log, display_img = np.concatenate((display_lab, lbl1)), np.concatenate((display_log, logtz)), np.concatenate((display_img, imgz))
+                    #     print(display_lab.shape, display_log.shape, display_img.shape)
+                    #
+                    # # Retreive metrics
+                    # label_track, logit_track, img_track = np.squeeze(display_lab), np.squeeze(display_log[:,:,:,(FLAGS.num_classes-1)]), np.squeeze(display_img)
+                    # print ("Number of Examples: ", label_track.shape, logit_track.shape, img_track.shape)
 
-                    # Retreive metrics
-                    label_track, logit_track, img_track = np.squeeze(display_lab), np.squeeze(display_log[:,:,:,(FLAGS.num_classes-1)]), np.squeeze(display_img)
-                    print ("Number of Examples: ", label_track.shape, logit_track.shape, img_track.shape)
-
-                    # Normalize display
-                    label_track[label_track > 0] = 1
-                    logit_track *= label_track
-                    for v in range (logit_track.shape[0]):
-                        logit_track[v] = (logit_track[v] - np.mean(logit_track[v]))/np.std(logit_track[v])
-                        # logit_track[v][label_track[v]==0] == np.min(logit_track[v])
-                    logit_track *= label_track
+                    # # Normalize display
+                    # label_track[label_track > 0] = 1
+                    # logit_track *= label_track
+                    # for v in range (logit_track.shape[0]):
+                    #     logit_track[v] = (logit_track[v] - np.mean(logit_track[v]))/np.std(logit_track[v])
+                    #     # logit_track[v][label_track[v]==0] == np.min(logit_track[v])
+                    # logit_track *= label_track
 
                     # Display volume
-                    sdl.display_volume(logit_track, True, cmap='jet')
+                    # sdl.display_volume(logit_track, True, cmap='jet')
                     # sdl.display_volume(img_track, True)
+            break
 
 
 def main(argv=None):  # pylint: disable=unused-argument

@@ -20,7 +20,7 @@ home_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/RiskSt
 sdl = SDL.SODLoader(data_root=home_dir)
 
 
-def pre_process(warps, box_dims=512):
+def pre_process(box_dims=512):
 
     """
     Loads the files to a protobuf
@@ -62,16 +62,19 @@ def pre_process(warps, box_dims=512):
         image = (image - 835.3) / 1189.5
         image *= mask
 
-        # For display purposes only
-        label_data[0,0], label_data[0,1] = 1, 2
+        # Augment the low class
+        if label == 1: copies = 5
+        else: copies = 1
 
-        # Save an example
-        data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
-                       'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': class_raw, 'label': label, 'accno': accno}
+        for _ in range (copies):
 
-        # Increment counter
-        index += 1
-        counter[label] += 1
+            # Save an example
+            data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
+                           'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': class_raw, 'label': label, 'accno': accno}
+
+            # Increment counter
+            index += 1
+            counter[label] += 1
 
         # Done with this patient
         pt += 1
@@ -120,9 +123,11 @@ def load_protobuf():
     data['label_data'] = tf.random_crop(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims, 1])
 
     # Random shear:
-    rand = tf.random_uniform([], minval=-0.1, maxval=0.1, dtype=tf.float32)
-    data['data'] = tf.contrib.image.transform(data['data'], [1, rand, rand, rand, 1, rand, 0, 0])
-    data['label_data'] = tf.contrib.image.transform(data['label_data'], [1, rand, rand, rand, 1, rand, 0, 0])
+    rand = []
+    for z in range(4):
+        rand.append(tf.random_uniform([], minval=-0.15, maxval=0.15, dtype=tf.float32))
+    data['data'] = tf.contrib.image.transform(data['data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
+    data['label_data'] = tf.contrib.image.transform(data['label_data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
 
     # Randomly flip
     def flip(mode=None):

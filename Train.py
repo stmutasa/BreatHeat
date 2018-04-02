@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Extended3/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Extended_aug/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -53,7 +53,7 @@ def train():
     with tf.Graph().as_default(), tf.device('/gpu:' + str(FLAGS.GPU)):
 
         # Get a dictionary of our images, id's, and labels here. Use the CPU
-        with tf.device('/cpu:0'): images, _ = network.inputs(skip=True)
+        with tf.device('/cpu:0'): images, _ = network.inputs(skip=False)
 
         # Define phase of training
         phase_train = tf.placeholder(tf.bool)
