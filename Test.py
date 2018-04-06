@@ -34,6 +34,7 @@ tf.app.flags.DEFINE_float('dropout_factor', 1.0, """ p value for the dropout lay
 tf.app.flags.DEFINE_float('l2_gamma', 1e-4, """ The gamma value for regularization loss""")
 tf.app.flags.DEFINE_float('loss_factor', 1.0, """Penalty for missing a class is this times more severe""")
 tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the moving average tracker""")
+tf.app.flags.DEFINE_float('threshold', 0.4, """Softmax threshold for declaring cancer""")
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
@@ -104,8 +105,7 @@ def eval():
 
                 # Define tester class instance
                 sdt = SDT.SODTester(False, False)
-                display_lab, display_log, display_img = [], [], []
-                avg_softmax, ground_truth = [], []
+                avg_softmax, ground_truth, right, total = [], [], 0, 0
 
                 # Use slim to handle queues:
                 with slim.queues.QueueRunners(sess):
@@ -117,43 +117,44 @@ def eval():
 
                         label_normalize, smx = np.copy(lbl1), np.squeeze(logtz)
 
-                        # Null background to 0.5. Then Retreive average softmax score and compare to label
+                        #
                         for z in range (FLAGS.batch_size):
 
+                            # Append the label to the tracker as one number
                             ground_truth.append(np.amax(label_normalize[z]))
+
+                            # Make mask by setting label background to 0 and breast to 1
                             label_normalize[z][label_normalize[z] >0] = 1
+
+                            # Apply mask to logits. And Make background (class 0) predictions 0
                             smx[z] *= label_normalize[z]
-                            avg_smx = np.average(np.reshape(smx[z], (-1, FLAGS.num_classes)), axis=0)
+                            smx[z, :, :, 0] *= 0
+
+                            # Generate softmax scores from the two cancer classes
+                            softmaxed_output = sdt.calc_softmax(np.reshape(smx[z, :, :, 1:], (-1, (FLAGS.num_classes-1))))
+
+                            # # TODO: Display
+                            # display_logits = np.copy(smx[z, :, :, 2])
+                            # display_softmax = sdt.calc_softmax(np.copy(smx[z, :, :, 1:]))
+                            # sdl.display_single_image(display_logits, False, cmap='jet')
+                            # sdl.display_single_image(display_softmax[:, :, 1], cmap='jet')
+
+                            # Make a row of softmax predictions by taking the average prediction for each class. Then add to tracker
+                            avg_smx = np.average(softmaxed_output, axis=0)
                             avg_softmax.append(avg_smx)
-                            if np.amax(label_normalize[z]) == 2 or z%10 == 0:
-                                print ('Label: %s, Softmaxes: %s' %(np.amax(ground_truth[z]), avg_smx))
 
-                        # print ('Ground truth: ', ground_truth)
-                        # print ('Avg Softmax: ', avg_softmax)
-                        print('grp done')
+                            # Increment counters
+                            if ground_truth[z] == 2 and avg_smx[1] > FLAGS.threshold: right +=1
+                            elif ground_truth[z] == 1 and avg_smx[1] < FLAGS.threshold: right += 1
+                            total += 1
 
+                            # Print summary every 10 examples
+                            if z%10 == 0: print ('Label: %s, Softmaxes: %s' %(ground_truth[z], avg_smx))
 
-                    #     # Combine predictions
-                    #     if i == 0: display_lab, display_log, display_img = lbl1, logtz, imgz
-                    #     else: display_lab, display_log, display_img = np.concatenate((display_lab, lbl1)), np.concatenate((display_log, logtz)), np.concatenate((display_img, imgz))
-                    #     print(display_lab.shape, display_log.shape, display_img.shape)
-                    #
-                    # # Retreive metrics
-                    # label_track, logit_track, img_track = np.squeeze(display_lab), np.squeeze(display_log[:,:,:,(FLAGS.num_classes-1)]), np.squeeze(display_img)
-                    # print ("Number of Examples: ", label_track.shape, logit_track.shape, img_track.shape)
+                        # Print errors
+                        acc = 100 * (right/total)
+                        print ('Right this batch: %s, Total: %s, Acc: %0.3f' %(right, total, acc))
 
-                    # # Normalize display
-                    # label_track[label_track > 0] = 1
-                    # logit_track *= label_track
-                    # for v in range (logit_track.shape[0]):
-                    #     logit_track[v] = (logit_track[v] - np.mean(logit_track[v]))/np.std(logit_track[v])
-                    #     # logit_track[v][label_track[v]==0] == np.min(logit_track[v])
-                    # logit_track *= label_track
-
-                    # Display volume
-                    # sdl.display_volume(logit_track, True, cmap='jet')
-                    # sdl.display_volume(img_track, True)
-            break
 
 
 def main(argv=None):  # pylint: disable=unused-argument

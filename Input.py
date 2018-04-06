@@ -16,9 +16,9 @@ FLAGS = tf.app.flags.FLAGS
 
 # Define the data directory to use
 home_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/RiskStudy'
+brca_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/BRCA'
 
 sdl = SDL.SODLoader(data_root=home_dir)
-
 
 def pre_process(box_dims=512):
 
@@ -84,6 +84,74 @@ def pre_process(box_dims=512):
 
     # Save the data
     sdl.save_tfrecords(data, 4, file_root='data/Breast_')
+    sdl.save_dict_filetypes(data[0])
+
+
+def pre_process_BRCA(box_dims=512):
+
+    """
+    Loads the files to a protobuf
+    :param box_dims: dimensions of the saved images
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    filenames = sdl.retreive_filelist('dcm', True, brca_dir)
+    shuffle(filenames)
+    print (len(filenames), 'Base Files: ', filenames)
+
+    # Global variables
+    display, counter, data, index, pt = [], [0, 0], {}, 0, 0
+
+    for file in filenames:
+
+        # Retreive patient number
+        group = file.split('/')[-4]
+        patient = group + file.split('/')[-3].split(' ')[-1]
+        view = file.split('/')[-2]
+
+        if 'Neg' in group: cancer = 0
+        else: cancer = 1
+
+        # These are all BRCA so all high risk
+        label = 1
+
+        # Load and resize image
+        try: image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
+        except:
+            print ("Failed to load: ", file)
+            continue
+
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+
+        # Create and apply mask/labels
+        mask = sdl.create_mammo_mask(image)
+        label_data = np.multiply(mask.astype(np.uint8), (label+1))
+
+        # Normalize image, mean/std: 835.3 1189.5
+        image = (image - 835.3) / 1189.5
+        image *= mask
+
+        # Augment the low class
+        if label == 1: copies = 5
+        else: copies = 1
+
+        # Save an example
+        data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
+                       'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': cancer, 'label': label, 'accno': accno}
+
+        # Increment counter
+        index += 1
+        counter[label] += 1
+
+        # Done with this patient
+        pt += 1
+
+    # # Done with all patients
+    print ('Made %s boxes from %s patients. Class counts: %s' %(index, pt, counter))
+
+    # Save the data
+    sdl.save_tfrecords(data, 1, file_root='data/BRCA_Test_')
     sdl.save_dict_filetypes(data[0])
 
 

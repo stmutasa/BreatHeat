@@ -380,7 +380,9 @@ def inputs(skip=False):
     """
 
     # To Do: Skip part 1 and 2 if the protobuff already exists
-    if not skip: Input.pre_process(FLAGS.box_dims)
+    if not skip:
+        Input.pre_process(FLAGS.box_dims)
+        Input.pre_process_BRCA(FLAGS.box_dims)
 
     print('----------------------------------------Loading Protobuff...')
     train = Input.load_protobuf()
