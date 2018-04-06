@@ -22,10 +22,10 @@ FLAGS = tf.app.flags.FLAGS
 
 # Group 1: 3796, Group 2 3893
 # 2 class: 2547 and 2457
-tf.app.flags.DEFINE_integer('epoch_size', 370, """Test examples: OF: 508""")
-tf.app.flags.DEFINE_integer('batch_size', 74, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 500, """Test examples: OF: 508""")
+tf.app.flags.DEFINE_integer('batch_size', 50, """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes""")
-tf.app.flags.DEFINE_string('test_files', '0', """Files for testing have this name""")
+tf.app.flags.DEFINE_string('test_files', 'BRCA', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 
@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_float('threshold', 0.4, """Softmax threshold for declaring c
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Extended_aug/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Base/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 

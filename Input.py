@@ -20,6 +20,7 @@ brca_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/BRCA'
 
 sdl = SDL.SODLoader(data_root=home_dir)
 
+
 def pre_process(box_dims=512):
 
     """
@@ -83,7 +84,7 @@ def pre_process(box_dims=512):
     print ('Made %s boxes from %s patients. Class counts: %s' %(index, pt, counter))
 
     # Save the data
-    sdl.save_tfrecords(data, 4, file_root='data/Breast_')
+    sdl.save_tfrecords(data, 4, file_root='data/BRCA_Breast_')
     sdl.save_dict_filetypes(data[0])
 
 
@@ -138,7 +139,7 @@ def pre_process_BRCA(box_dims=512):
 
         # Save an example
         data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
-                       'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': cancer, 'label': label, 'accno': accno}
+                       'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': view, 'label': label, 'accno': accno}
 
         # Increment counter
         index += 1
@@ -152,7 +153,6 @@ def pre_process_BRCA(box_dims=512):
 
     # Save the data
     sdl.save_tfrecords(data, 1, file_root='data/BRCA_Test_')
-    sdl.save_dict_filetypes(data[0])
 
 
 def load_protobuf():
