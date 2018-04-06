@@ -84,7 +84,7 @@ def pre_process(box_dims=512):
     print ('Made %s boxes from %s patients. Class counts: %s' %(index, pt, counter))
 
     # Save the data
-    sdl.save_tfrecords(data, 4, file_root='data/BRCA_Breast_')
+    sdl.save_tfrecords(data, 4, file_root='data/Breast_')
     sdl.save_dict_filetypes(data[0])
 
 
