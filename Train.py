@@ -53,7 +53,7 @@ def train():
     with tf.Graph().as_default(), tf.device('/gpu:' + str(FLAGS.GPU)):
 
         # Get a dictionary of our images, id's, and labels here. Use the CPU
-        with tf.device('/cpu:0'): images, _ = network.inputs(skip=False)
+        with tf.device('/cpu:0'): images, _ = network.inputs(skip=True)
 
         # Define phase of training
         phase_train = tf.placeholder(tf.bool)

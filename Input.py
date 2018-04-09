@@ -193,7 +193,7 @@ def load_protobuf():
     # Random shear:
     rand = []
     for z in range(4):
-        rand.append(tf.random_uniform([], minval=-0.15, maxval=0.15, dtype=tf.float32))
+        rand.append(tf.random_uniform([], minval=-0.2, maxval=0.2, dtype=tf.float32))
     data['data'] = tf.contrib.image.transform(data['data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
     data['label_data'] = tf.contrib.image.transform(data['label_data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
 
@@ -233,8 +233,6 @@ def load_validation_set():
 
     # Use Glob here
     filenames1 = glob.glob('data/*.tfrecords')
-
-    # The real filenames
     filenames = []
 
     # Retreive only the right filename
