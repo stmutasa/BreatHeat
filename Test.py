@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_float('threshold', 0.5, """Softmax threshold for declaring c
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Base/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'No_Dice_2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -152,7 +152,7 @@ def eval():
 
                     # Print errors
                     acc = 100 * (right/total)
-                    print ('Right this batch: %s, Total: %s, Acc: %0.3f' %(right, total, acc))
+                    print ('\nRight this batch: %s, Total: %s, Acc: %0.3f\n' %(right, total, acc))
 
                     # Lets save runs that are best
                     if acc >= best_MAE:
@@ -179,6 +179,7 @@ def eval():
 
             # Sleep if no changes
             while filecheck == newfilec:
+
                 # Sleep an amount of time proportional to the epoch size
                 time.sleep(2)
 
