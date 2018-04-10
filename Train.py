@@ -25,9 +25,9 @@ tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the 
 
 #
 tf.app.flags.DEFINE_integer('epoch_size', 1500, """How many images were loaded""")
-tf.app.flags.DEFINE_integer('num_epochs', 900, """Number of epochs to run""")
+tf.app.flags.DEFINE_integer('num_epochs', 400, """Number of epochs to run""")
 tf.app.flags.DEFINE_integer('print_interval', 5, """How often to print a summary to console during training""")
-tf.app.flags.DEFINE_integer('checkpoint_interval', 100, """How many Epochs to wait before saving a checkpoint""")
+tf.app.flags.DEFINE_integer('checkpoint_interval', 20, """How many Epochs to wait before saving a checkpoint""")
 tf.app.flags.DEFINE_integer('batch_size', 16, """Number of images to process in a batch.""")
 
 # Regularizers
@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'No_Dice_2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'ALLNo_Dice_2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -148,7 +148,7 @@ def train():
                         summary_writer.add_summary(summary, i)
 
 
-                    if i % checkpoint_interval == 0:
+                    if i % checkpoint_interval == 0 and Epoch > 200:
 
                         print('-' * 70, '\nSaving... GPU: %s, File:%s' % (FLAGS.GPU, FLAGS.RunInfo[:-1]))
 

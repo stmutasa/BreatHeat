@@ -34,11 +34,11 @@ tf.app.flags.DEFINE_float('dropout_factor', 1.0, """ p value for the dropout lay
 tf.app.flags.DEFINE_float('l2_gamma', 1e-4, """ The gamma value for regularization loss""")
 tf.app.flags.DEFINE_float('loss_factor', 1.0, """Penalty for missing a class is this times more severe""")
 tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the moving average tracker""")
-tf.app.flags.DEFINE_float('threshold', 0.5, """Softmax threshold for declaring cancer""")
+tf.app.flags.DEFINE_float('threshold', 0.464, """Softmax threshold for declaring cancer""")
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'No_Dice_2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'ALLNo_Dice_2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
