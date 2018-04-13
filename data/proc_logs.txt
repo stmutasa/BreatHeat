@@ -3,4 +3,4 @@ Made 1478 boxes from 1478 patients. Class counts: [1263, 215]
 
 Augmented:
 Both: Made 2338 boxes from 1478 patients. Class counts: [1263, 1075]
-BRCA: Made 266 boxes from 266 patients. Class counts: [0, 266]
+BRCA: Made 266 boxes from 266 patients. Train: 166 Test: 100 -- All class 2

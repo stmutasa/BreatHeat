@@ -22,10 +22,10 @@ FLAGS = tf.app.flags.FLAGS
 
 # Group 1: 3796, Group 2 3893
 # 2 class: 2547 and 2457
-tf.app.flags.DEFINE_integer('epoch_size', 584, """Test examples: OF: 508""")
-tf.app.flags.DEFINE_integer('batch_size', 73, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 685, """Test examples: OF: 508""")
+tf.app.flags.DEFINE_integer('batch_size', 137, """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes""")
-tf.app.flags.DEFINE_string('test_files', 'BRCA', """Files for testing have this name""")
+tf.app.flags.DEFINE_string('test_files', 'Test', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 
@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_float('threshold', 0.5, """Softmax threshold for declaring c
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'No_Dice_2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'BRCATrain_1/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -130,7 +130,8 @@ def eval():
                             smx[z, :, :, 0] *= 0
 
                             # Generate softmax scores from the two cancer classes
-                            softmaxed_output = sdt.calc_softmax(np.reshape(smx[z, :, :, 1:], (-1, (FLAGS.num_classes-1))))
+                            #softmaxed_output = sdt.calc_softmax(np.reshape(smx[z, :, :, 1:], (-1, (FLAGS.num_classes-1))))
+                            softmaxed_output = np.reshape(smx[z, :, :, 1:], (-1, (FLAGS.num_classes-1)))
 
                             # # TODO: Display
                             # display_logits = np.copy(smx[z, :, :, 2])
@@ -161,7 +162,7 @@ def eval():
                         print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
 
                         # Define the filename
-                        file = ('Epoch_%s_AUC_%0.3f' % (Epoch, acc))
+                        file = ('Epoch_%s_ACC_%0.3f' % (Epoch, acc))
 
                         # Define the checkpoint file:
                         checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo, file)
@@ -170,7 +171,7 @@ def eval():
                         saver.save(sess, checkpoint_file)
 
                         # Save a new best MAE
-                        best_MAE = sdt.MAE
+                        best_MAE = acc
                         best_epoch = Epoch
 
             # Otherwise check folder for changes

@@ -102,7 +102,7 @@ def pre_process_BRCA(box_dims=512):
     print (len(filenames), 'Base Files: ', filenames)
 
     # Global variables
-    display, counter, data, index, pt = [], [0, 0], {}, 0, 0
+    display, counter, data, data_test, index, pt = [], [0, 0], {}, {}, 0, 0
 
     for file in filenames:
 
@@ -137,9 +137,12 @@ def pre_process_BRCA(box_dims=512):
         if label == 1: copies = 5
         else: copies = 1
 
-        # Save an example
-        data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
-                       'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': view, 'label': label, 'accno': accno}
+        # Save the first 100 as testing
+        if index < 100: data_test[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
+                           'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': view, 'label': label, 'accno': accno}
+
+        else: data[index-100] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
+                           'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': view, 'label': label, 'accno': accno}
 
         # Increment counter
         index += 1
@@ -149,10 +152,11 @@ def pre_process_BRCA(box_dims=512):
         pt += 1
 
     # # Done with all patients
-    print ('Made %s boxes from %s patients. Class counts: %s' %(index, pt, counter))
+    print ('Made %s boxes from %s patients. Train: %s Test: %s' %(index, pt, len(data), len(data_test)))
 
     # Save the data
-    sdl.save_tfrecords(data, 1, file_root='data/BRCA_Test_')
+    sdl.save_tfrecords(data, 1, file_root='data/BRCA_Train_')
+    sdl.save_tfrecords(data_test, 1, file_root='data/BRCA_Test_')
 
 
 def load_protobuf():
