@@ -104,6 +104,54 @@ def forward_pass_fancy(images, phase_train):
     return Logits, sdn.calc_L2_Loss(FLAGS.l2_gamma)
 
 
+def forward_pass_class(images, phase_train):
+
+    """
+    This function builds the network architecture and performs the forward pass
+    Two main architectures depending on where to insert the inception or residual layer
+    :param images: Images to analyze
+    :param phase_train1: bool, whether this is the training phase or testing phase
+    :return: logits: the predicted age from the network
+    :return: l2: the value of the l2 loss
+    """
+
+    K = 16
+
+    # First layer is conv
+    print('Input Images: ', images)
+
+    # Residual blocks
+    conv = sdn.convolution('Conv1', images, 3, K, 2, phase_train=phase_train) # 128
+    conv = sdn.residual_layer('Residual1', conv, 3, K * 2, 2, phase_train=phase_train)
+    conv = sdn.residual_layer('Residual2', conv, 3, K * 4, 2, phase_train=phase_train)
+    conv = sdn.residual_layer('Residual3', conv, 3, K * 8, 2, phase_train=phase_train)  # 16x16
+    conv = sdn.residual_layer('Residual4', conv, 3, K * 8, 1, phase_train=phase_train)
+    conv = sdn.residual_layer('Residual5', conv, 3, K * 16, 2, phase_train=phase_train)
+    conv = sdn.inception_layer('Inception6', conv, K * 16, S=1, phase_train=phase_train)
+    conv = sdn.residual_layer('Residual7', conv, 3, K * 32, 2, phase_train=phase_train)
+    conv = sdn.residual_layer('Residual8', conv, 3, K * 32, 1, phase_train=phase_train)
+    conv = sdn.residual_layer('Residual9', conv, 3, K * 32, 1, phase_train=phase_train)
+
+    # # Define densenet class
+    # dense = SDN.DenseNet(nb_blocks=6, filters=6, sess=None, phase_train=phase_train, summary=False)
+    # conv = sdn.convolution('Conv1', images, 3, 16, 2, phase_train=phase_train)
+    # conv = dense.dense_block(conv, nb_layers=2, layer_name='Dense128', downsample=True)
+    # conv = dense.dense_block(conv, nb_layers=4, layer_name='Dense64', downsample=True)
+    # conv = dense.dense_block(conv, nb_layers=8, layer_name='Dense32', downsample=True)
+    # conv = dense.dense_block(conv, nb_layers=16, layer_name='Dense16', downsample=True)
+    # conv = dense.dense_block(conv, nb_layers=24, layer_name='Dense8', downsample=True)
+    # conv = dense.dense_block(conv, nb_layers=48, layer_name='Dense4', downsample=False, keep_prob=FLAGS.dropout_factor)
+
+    print('End Dims', conv)
+
+    # Linear layers
+    fc = sdn.fc7_layer('FC', conv, 16, True, phase_train, FLAGS.dropout_factor, BN=True)
+    fc = sdn.linear_layer('Linear', fc, 8, False, phase_train, BN=True)
+    Logits = sdn.linear_layer('Output', fc, FLAGS.num_classes, False, phase_train, BN=False, relu=False, add_bias=False)
+
+    return Logits, sdn.calc_L2_Loss(FLAGS.l2_gamma)
+
+
 def forward_pass_extend(images, phase_train):
 
     """

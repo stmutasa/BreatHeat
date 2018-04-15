@@ -24,10 +24,11 @@ FLAGS = tf.app.flags.FLAGS
 # 2 class: 2547 and 2457
 tf.app.flags.DEFINE_integer('epoch_size', 584, """Test examples: OF: 508""")
 tf.app.flags.DEFINE_integer('batch_size', 73, """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes""")
-tf.app.flags.DEFINE_string('test_files', 'BRCA', """Files for testing have this name""")
+tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes + 1 for background""")
+tf.app.flags.DEFINE_string('test_files', 'Test', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
+tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification """)
 
 # Hyperparameters:
 tf.app.flags.DEFINE_float('dropout_factor', 1.0, """ p value for the dropout layer""")
@@ -38,7 +39,7 @@ tf.app.flags.DEFINE_float('threshold', 0.464, """Softmax threshold for declaring
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'ALLNo_Dice_2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Res_Class_warp/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -55,11 +56,16 @@ def eval():
         phase_train = tf.placeholder(tf.bool)
 
         # Build a graph that computes the prediction from the inference model (Forward pass)
-        logits, _ = network.forward_pass(valid['data'], phase_train=phase_train)
-        softmax = tf.nn.softmax(logits)
 
-        # To retreive labels
-        labels = valid['label_data']
+
+        # Run the network depending on type
+        if FLAGS.net_type == 0:
+            logits, _ = network.forward_pass(valid['data'], phase_train=phase_train)
+            softmax = tf.nn.softmax(logits)
+            labels = valid['label_data']
+        else:
+            logits, _ = network.forward_pass_class(valid['data'], phase_train=phase_train)
+            labels = valid['label']
 
         # Initialize variables operation
         var_init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
@@ -104,7 +110,8 @@ def eval():
                 max_steps = int(FLAGS.epoch_size / FLAGS.batch_size)
 
                 # Define tester class instance
-                sdt = SDT.SODTester(False, False)
+                if FLAGS.net_type ==0: sdt = SDT.SODTester(False, False)
+                else: sdt = SDT.SODTester(True, False)
                 avg_softmax, ground_truth, right, total = [], [], 0, 0
 
                 # Use slim to handle queues:
@@ -112,56 +119,80 @@ def eval():
 
                     for i in range(max_steps):
 
-                        # Load some metrics for testing
-                        lbl1, logtz, imgz, serz, smx = sess.run([labels, logits, valid['data'], valid['patient'], softmax], feed_dict={phase_train: False})
-                        label_normalize, smx = np.copy(lbl1), np.squeeze(logtz)
+                        if FLAGS.net_type ==0: # Segmentation network
 
-                        # Calculate average softmax
-                        for z in range (FLAGS.batch_size):
+                            # Load some metrics for testing
+                            lbl1, logtz, imgz, serz, smx = sess.run([labels, logits, valid['data'], valid['patient'], softmax], feed_dict={phase_train: False})
+                            label_normalize, smx = np.copy(lbl1), np.squeeze(logtz)
 
-                            # Append the label to the tracker as one number
-                            ground_truth.append(np.amax(label_normalize[z]))
+                            # Calculate average softmax
+                            for z in range (FLAGS.batch_size):
 
-                            # Make mask by setting label background to 0 and breast to 1
-                            label_normalize[z][label_normalize[z] >0] = 1
+                                # Append the label to the tracker as one number
+                                ground_truth.append(np.amax(label_normalize[z]))
 
-                            # Apply mask to logits. And Make background (class 0) predictions 0
-                            smx[z] *= label_normalize[z]
-                            smx[z, :, :, 0] *= 0
+                                # Make mask by setting label background to 0 and breast to 1
+                                label_normalize[z][label_normalize[z] >0] = 1
 
-                            # Generate softmax scores from the two cancer classes
-                            softmaxed_output = sdt.calc_softmax(np.reshape(smx[z, :, :, 1:], (-1, (FLAGS.num_classes-1))))
+                                # Apply mask to logits. And Make background (class 0) predictions 0
+                                smx[z] *= label_normalize[z]
+                                smx[z, :, :, 0] *= 0
 
-                            # # TODO: Display
-                            # display_logits = np.copy(smx[z, :, :, 2])
-                            # display_softmax = sdt.calc_softmax(np.copy(smx[z, :, :, 1:]))
-                            # sdl.display_single_image(display_logits, False, cmap='jet')
-                            # sdl.display_single_image(display_softmax[:, :, 1], cmap='jet')
+                                # Generate softmax scores from the two cancer classes
+                                softmaxed_output = sdt.calc_softmax(np.reshape(smx[z, :, :, 1:], (-1, (FLAGS.num_classes-1))))
 
-                            # Make a row of softmax predictions by taking the average prediction for each class. Then add to tracker
-                            avg_smx = np.average(softmaxed_output, axis=0)
-                            avg_softmax.append(avg_smx)
+                                # # TODO: Display
+                                # display_logits = np.copy(smx[z, :, :, 2])
+                                # display_softmax = sdt.calc_softmax(np.copy(smx[z, :, :, 1:]))
+                                # sdl.display_single_image(display_logits, False, cmap='jet')
+                                # sdl.display_single_image(display_softmax[:, :, 1], cmap='jet')
 
-                            # Increment counters
-                            if ground_truth[z] == 2 and avg_smx[1] > FLAGS.threshold: right +=1
-                            elif ground_truth[z] == 1 and avg_smx[1] < FLAGS.threshold: right += 1
-                            total += 1
+                                # Make a row of softmax predictions by taking the average prediction for each class. Then add to tracker
+                                avg_smx = np.average(softmaxed_output, axis=0)
+                                avg_softmax.append(avg_smx)
 
-                            # Print summary every 10 examples
-                            if z%10 == 0: print ('Label: %s, Softmaxes: %s' %(ground_truth[z], avg_smx))
+                                # Increment counters
+                                if ground_truth[z] == 2 and avg_smx[1] > FLAGS.threshold: right +=1
+                                elif ground_truth[z] == 1 and avg_smx[1] < FLAGS.threshold: right += 1
+                                total += 1
+
+                                # Print summary every 10 examples
+                                if z%10 == 0: print ('Label: %s, Softmaxes: %s' %(ground_truth[z], avg_smx))
+
+                        else: # Classification network
+
+                            # Also retreive the predictions and labels
+                            preds, labs = sess.run([logits, labels], feed_dict={phase_train: False})
+
+                            # Convert to numpy arrays
+                            predictions, label = preds.astype(np.float32), np.squeeze(labs.astype(np.float32))
+
+                            # If first step then create the tracking
+                            if i == 0:
+                                label_track = np.copy(label)
+                                logit_track = np.copy(predictions)
+                            else:
+                                label_track = np.concatenate((label_track, label))
+                                logit_track = np.concatenate((logit_track, predictions))
 
                     # Print errors
-                    acc = 100 * (right/total)
-                    print ('\nRight this batch: %s, Total: %s, Acc: %0.3f\n' %(right, total, acc))
+
+                    if FLAGS.net_type==0:
+                        acc = 100 * (right/total)
+                        print ('\nRight this batch: %s, Total: %s, Acc: %0.3f\n' %(right, total, acc))
+                    else:
+                        print (logit_track.shape, label_track.shape)
+                        sdt.calculate_metrics(np.asarray(logit_track), np.asarray(label_track), 1, max_steps)
+                        sdt.retreive_metrics_classification(Epoch)
 
                     # Lets save runs that are best
-                    if acc >= best_MAE:
+                    if sdt.AUC*100 >= best_MAE:
 
                         # Save the checkpoint
                         print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
 
                         # Define the filename
-                        file = ('Epoch_%s_AUC_%0.3f' % (Epoch, acc))
+                        file = ('Epoch_%s_AUC_%0.3f' % (Epoch, sdt.AUC))
 
                         # Define the checkpoint file:
                         checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo, file)
@@ -170,7 +201,7 @@ def eval():
                         saver.save(sess, checkpoint_file)
 
                         # Save a new best MAE
-                        best_MAE = sdt.MAE
+                        best_MAE = sdt.AUC*100
                         best_epoch = Epoch
 
             # Otherwise check folder for changes
@@ -181,7 +212,7 @@ def eval():
             while filecheck == newfilec:
 
                 # Sleep an amount of time proportional to the epoch size
-                time.sleep(2)
+                #time.sleep(60*120)
 
                 # Recheck the folder for changes
                 newfilec = glob.glob(FLAGS.train_dir + FLAGS.RunInfo + '*')

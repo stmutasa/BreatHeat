@@ -18,17 +18,18 @@ _author_ = 'Simi'
 FLAGS = tf.app.flags.FLAGS
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_classes', 3, """ Number of classes + 1 for background""")
-tf.app.flags.DEFINE_string('test_files', 'BRCA', """Files for testing have this name""")
+tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes + 1 for background""")
+tf.app.flags.DEFINE_string('test_files', 'Test', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
+tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification """)
 
 #
 tf.app.flags.DEFINE_integer('epoch_size', 1500, """How many images were loaded""")
 tf.app.flags.DEFINE_integer('num_epochs', 400, """Number of epochs to run""")
 tf.app.flags.DEFINE_integer('print_interval', 5, """How often to print a summary to console during training""")
-tf.app.flags.DEFINE_integer('checkpoint_interval', 20, """How many Epochs to wait before saving a checkpoint""")
-tf.app.flags.DEFINE_integer('batch_size', 16, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('checkpoint_interval', 25, """How many Epochs to wait before saving a checkpoint""")
+tf.app.flags.DEFINE_integer('batch_size', 96, """Number of images to process in a batch.""")
 
 # Regularizers
 tf.app.flags.DEFINE_float('dropout_factor', 0.75, """ Keep probability""")
@@ -37,13 +38,13 @@ tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the 
 tf.app.flags.DEFINE_float('loss_factor', 1.0, """Penalty for missing a class is this times more severe""")
 
 # Hyperparameters to control the learning rate
-tf.app.flags.DEFINE_float('learning_rate', 3e-3, """Initial learning rate""")
+tf.app.flags.DEFINE_float('learning_rate', 1e-3, """Initial learning rate""")
 tf.app.flags.DEFINE_float('beta1', 0.9, """ The beta 1 value for the adam optimizer""")
 tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam optimizer""")
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'ALLNo_Dice_2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Res_Class_warp/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -58,14 +59,16 @@ def train():
         # Define phase of training
         phase_train = tf.placeholder(tf.bool)
 
-        # Build a graph that computes the prediction from the inference model (Forward pass)
-        logits, l2loss = network.forward_pass(images['data'], phase_train=phase_train)
+        # Run the network depending on type
+        if FLAGS.net_type == 0:
+            logits, l2loss = network.forward_pass(images['data'], phase_train=phase_train)
+            labels = images['label_data']
+            SCE_loss = network.total_loss(logits, labels, FLAGS.num_classes, 'Softmax')
+        else:
+            logits, l2loss = network.forward_pass_class(images['data'], phase_train=phase_train)
+            labels = images['label']
+            SCE_loss = network.sdn.SCE_loss(logits, labels, FLAGS.num_classes)
 
-        # Labels
-        labels = images['label_data']
-
-        # Calculate the objective function loss
-        SCE_loss = network.total_loss(logits, labels, FLAGS.num_classes, 'Softmax')
 
         # Add in L2 Regularization
         loss = tf.add(SCE_loss, l2loss, name='loss')
@@ -148,7 +151,7 @@ def train():
                         summary_writer.add_summary(summary, i)
 
 
-                    if i % checkpoint_interval == 0 and Epoch > 200:
+                    if i % checkpoint_interval == 0:
 
                         print('-' * 70, '\nSaving... GPU: %s, File:%s' % (FLAGS.GPU, FLAGS.RunInfo[:-1]))
 
@@ -160,6 +163,8 @@ def train():
 
                         # Save the checkpoint
                         saver.save(sess, checkpoint_file)
+
+                        time.sleep(10)
 
 
 def main(argv=None):  # pylint: disable=unused-argument

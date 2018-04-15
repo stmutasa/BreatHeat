@@ -212,14 +212,14 @@ def load_protobuf():
     data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random_uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(1), lambda: flip(0))
     data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random_uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(2), lambda: flip(0))
 
-    # Random contrast and brightness
-    data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
-    data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
-
-    # Random gaussian noise
-    T_noise = tf.random_uniform([], 0, 0.1)
-    noise = tf.random_uniform(shape=[FLAGS.network_dims, FLAGS.network_dims, 1], minval=-T_noise, maxval=T_noise)
-    data['data'] = tf.add(data['data'], tf.cast(noise, tf.float32))
+    # # Random contrast and brightness
+    # data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
+    # data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
+    #
+    # # Random gaussian noise
+    # T_noise = tf.random_uniform([], 0, 0.1)
+    # noise = tf.random_uniform(shape=[FLAGS.network_dims, FLAGS.network_dims, 1], minval=-T_noise, maxval=T_noise)
+    # data['data'] = tf.add(data['data'], tf.cast(noise, tf.float32))
 
     # Display the images
     tf.summary.image('Train IMG', tf.reshape(data['data'], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 4)
