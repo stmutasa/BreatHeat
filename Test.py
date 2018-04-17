@@ -39,7 +39,7 @@ tf.app.flags.DEFINE_float('threshold', 0.464, """Softmax threshold for declaring
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Res_Class_warp/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Res_Class_warp3/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 

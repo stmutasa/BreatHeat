@@ -2,7 +2,7 @@
 Does our loading and preprocessing of files to a protobuf
 """
 
-import glob
+import glob, os
 
 import numpy as np
 import tensorflow as tf
@@ -17,6 +17,7 @@ FLAGS = tf.app.flags.FLAGS
 # Define the data directory to use
 home_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/RiskStudy'
 brca_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/BRCA'
+treat_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/Chemoprevention'
 
 sdl = SDL.SODLoader(data_root=home_dir)
 
@@ -159,6 +160,102 @@ def pre_process_BRCA(box_dims=512):
     sdl.save_tfrecords(data_test, 1, file_root='data/BRCA_Test_')
 
 
+def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU'):
+
+    """
+    Loads the files to a protobuf
+    :param box_dims: dimensions of the saved images
+    :param grouping: which group to load: Treated or Normal
+    :param time_save: which time period Mammo to load: FU or ORIG
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    filenames = sdl.retreive_filelist('dcm', True, treat_dir)
+    print (len(filenames), 'Base Files: ', filenames)
+
+    # Global variables
+    display, counter, data, index, pt, excluded = [], [0, 0], {}, 0, 0, {}
+
+    # First delete some of the radiated files
+    for file in filenames:
+
+        # Retreive labels: Chemoprevention/Treated/Patient 155/L CC
+        basename = os.path.dirname(file)
+        group = basename.split('/')[-3]
+        patient = int(basename.split('/')[-2].split(' ')[-1])
+        side = basename.split('/')[-1].split(' ')[0]
+        view = basename.split('/')[-1].split(' ')[1]
+        if 'YR' in file: time='FU'
+        else: time = 'ORIG'
+
+        # Generate excluded key
+        exclude_key = None
+        exclude_key = group + str(patient) + side + time
+
+        # Exclude certain files
+        if '###' in file: excluded[exclude_key] = True
+
+    for file in filenames:
+
+        # Retreive labels: Chemoprevention/Treated/Patient 155/L CC
+        basename = os.path.dirname(file)
+        group = basename.split('/')[-3]
+        patient = int(basename.split('/')[-2].split(' ')[-1])
+        side = basename.split('/')[-1].split(' ')[0]
+        view = basename.split('/')[-1].split(' ')[1]
+        if 'YR' in file: time='FU'
+        else: time = 'ORIG'
+
+        # Generate excluded key and exclude the side of nonsense
+        exclude_key = None
+        exclude_key = group + str(patient) + side + time
+
+        # Skip the ones not in this grouping
+        if grouping not in exclude_key: continue
+        if time_save not in time: continue
+
+        try:
+            if excluded[exclude_key] == True: continue
+        except: pass
+
+        # All of the patients are technically high risk
+        label = 1
+
+        # Load and resize image
+        try: image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
+        except:
+            print ("Failed to load: ", file)
+            continue
+
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+
+        # Create and apply mask/labels
+        mask = sdl.create_mammo_mask(image)
+        label_data = np.multiply(mask.astype(np.uint8), (label+1))
+
+        # Normalize image, mean/std: 835.3 1189.5
+        image = (image - 835.3) / 1189.5
+        image *= mask
+
+        # Save:
+        data[index] = {'data': image.astype(np.float32), 'label_data': label_data.astype(np.float32), 'file': file, 'shapex': shape[0],
+                           'shapy': shape[1], 'group': group, 'patient': patient, 'class_raw': exclude_key, 'label': label, 'accno': accno}
+
+        # Increment counter
+        index += 1
+        counter[label] += 1
+
+        # Done with this patient
+        pt += 1
+
+    # # Done with all patients
+    print ('Made %s %s %s boxes from %s patients. Size: %s ' %(index, grouping, time_save, pt, len(data)))
+
+    # Save the data
+    sdl.save_tfrecords(data, 1, file_root=('data/%s_%s_Train_' %(grouping, time_save)))
+
+
 def load_protobuf():
 
     """
@@ -256,3 +353,8 @@ def load_validation_set():
     tf.summary.image('Test IMG', tf.reshape(data['data'], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 4)
 
     return sdl.val_batches(data, FLAGS.batch_size)
+
+pre_process_Treatment(512, 'Normal', 'ORIG')
+pre_process_Treatment(512, 'Normal', 'FU')
+pre_process_Treatment(512, 'Treated', 'ORIG')
+pre_process_Treatment(512, 'Treated', 'FU')

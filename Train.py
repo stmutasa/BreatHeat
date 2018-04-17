@@ -38,13 +38,13 @@ tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the 
 tf.app.flags.DEFINE_float('loss_factor', 1.0, """Penalty for missing a class is this times more severe""")
 
 # Hyperparameters to control the learning rate
-tf.app.flags.DEFINE_float('learning_rate', 1e-3, """Initial learning rate""")
+tf.app.flags.DEFINE_float('learning_rate', 1e-4, """Initial learning rate""")
 tf.app.flags.DEFINE_float('beta1', 0.9, """ The beta 1 value for the adam optimizer""")
 tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam optimizer""")
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Res_Class_warp/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Res_Class_warp3/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
