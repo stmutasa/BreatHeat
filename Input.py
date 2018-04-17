@@ -172,7 +172,6 @@ def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU'):
 
     # Load the filenames and randomly shuffle them
     filenames = sdl.retreive_filelist('dcm', True, treat_dir)
-    print (len(filenames), 'Base Files: ', filenames)
 
     # Global variables
     display, counter, data, index, pt, excluded = [], [0, 0], {}, 0, 0, {}
@@ -224,9 +223,7 @@ def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU'):
 
         # Load and resize image
         try: image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
-        except:
-            print ("Failed to load: ", file)
-            continue
+        except: continue
 
         image = sdl.zoom_2D(image, [box_dims, box_dims])
 
@@ -354,7 +351,7 @@ def load_validation_set():
 
     return sdl.val_batches(data, FLAGS.batch_size)
 
-pre_process_Treatment(512, 'Normal', 'ORIG')
-pre_process_Treatment(512, 'Normal', 'FU')
-pre_process_Treatment(512, 'Treated', 'ORIG')
-pre_process_Treatment(512, 'Treated', 'FU')
+# pre_process_Treatment(512, 'Normal', 'ORIG')
+# pre_process_Treatment(512, 'Normal', 'FU')
+# pre_process_Treatment(512, 'Treated', 'ORIG')
+# pre_process_Treatment(512, 'Treated', 'FU')

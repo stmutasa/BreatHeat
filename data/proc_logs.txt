@@ -4,3 +4,9 @@ Made 1478 boxes from 1478 patients. Class counts: [1263, 215]
 Augmented:
 Both: Made 2338 boxes from 1478 patients. Class counts: [1263, 1075]
 BRCA: Made 266 boxes from 266 patients. Train: 166 Test: 100 -- All class 2
+
+Treatment groups:
+Made 1270 Normal ORIG boxes from 1270 patients. Size: 1270 
+Made 1396 Normal FU boxes from 1396 patients. Size: 1396 
+Made 508 Treated ORIG boxes from 508 patients. Size: 508 
+Made 710 Treated FU boxes from 710 patients. Size: 710  

@@ -20,12 +20,10 @@ _author_ = 'Simi'
 # Define the FLAGS class to hold our immutable global variables
 FLAGS = tf.app.flags.FLAGS
 
-# Group 1: 3796, Group 2 3893
-# 2 class: 2547 and 2457
-tf.app.flags.DEFINE_integer('epoch_size', 584, """Test examples: OF: 508""")
-tf.app.flags.DEFINE_integer('batch_size', 73, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 1270, """Test examples: OF: 508""")
+tf.app.flags.DEFINE_integer('batch_size', 254, """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes + 1 for background""")
-tf.app.flags.DEFINE_string('test_files', 'Test', """Files for testing have this name""")
+tf.app.flags.DEFINE_string('test_files', 'Normal_ORIG', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification """)
