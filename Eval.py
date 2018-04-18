@@ -26,12 +26,14 @@ Made 1270 Normal ORIG boxes from 1270 patients. Size: 1270
 Made 1396 Normal FU boxes from 1396 patients. Size: 1396 
 Made 508 Treated ORIG boxes from 508 patients. Size: 508 
 Made 710 Treated FU boxes from 710 patients. Size: 710  
+Made 1073 Analysis 2 Normal FU boxes from 1073 patients. Size: 1073 
+Made 498 Analysis 2 Treated FU boxes from 498 patients. Size: 498 
 """
 
-tf.app.flags.DEFINE_integer('epoch_size', 710, """Test examples: OF: 508""")
-tf.app.flags.DEFINE_integer('batch_size', 10, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 1073, """Test examples: OF: 508""")
+tf.app.flags.DEFINE_integer('batch_size', 37, """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes + 1 for background""")
-tf.app.flags.DEFINE_string('test_files', 'Treated_FU', """Files for testing have this name""")
+tf.app.flags.DEFINE_string('test_files', 'Followup', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification """)
@@ -157,20 +159,18 @@ def eval():
                     else: # Classification network
 
                         # Also retreive the predictions and labels
-                        preds, labs, identifier = sess.run([logits, labels, valid['class_raw']], feed_dict={phase_train: False})
+                        preds, labs, patient, group = sess.run([logits, labels, valid['patient'], valid['group']], feed_dict={phase_train: False})
 
                         # Convert to numpy arrays
                         predictions, label = preds.astype(np.float32), np.squeeze(labs.astype(np.float32))
 
                         # If first step then create the tracking
                         if i == 0:
-                            label_track = np.copy(label)
-                            logit_track = np.copy(predictions)
-                            id_track = np.copy(identifier)
+                            label_track, logit_track = np.copy(label), np.copy(predictions)
+                            pt_track, grp_track = np.copy(patient), np.copy(group)
                         else:
-                            label_track = np.concatenate((label_track, label))
-                            logit_track = np.concatenate((logit_track, predictions))
-                            id_track = np.concatenate((id_track, identifier))
+                            label_track, logit_track = np.concatenate((label_track, label)), np.concatenate((logit_track, predictions))
+                            pt_track, grp_track = np.concatenate((pt_track, patient)), np.concatenate((grp_track, group))
 
                 # Print errors
 
@@ -181,12 +181,13 @@ def eval():
                     print (logit_track.shape, label_track.shape)
                     calc_labels = np.squeeze(label_track.astype(np.int8))
                     calc_logit = np.squeeze(np.argmax(logit_track.astype(np.float), axis=1))
-                    print (calc_logit.shape, calc_labels.shape)
+                    logit_track = sdt.calc_softmax(logit_track)
                     right, total = 0, 0
                     for z in range (logit_track.shape[0]):
                         if calc_labels[z] == calc_logit[z]: # All positive in this case, save
                             right += 1
-                            save_Data[z] = {'ID': id_track[z].decode("utf-8"), 'Class 1': logit_track[z][0], 'Class 2': logit_track[z][1]}
+                            save_Data[z] = {'ID': z, 'PT': pt_track[z].decode("utf-8"), 'GRP': grp_track[z].decode("utf-8"),
+                                            'Class 1': logit_track[z][0], 'Class 2': logit_track[z][1]}
                         total +=1
                     acc = 100 * (right / total)
                     print('\nRight this batch: %s, Total: %s, Acc: %0.3f\n' % (right, total, acc))

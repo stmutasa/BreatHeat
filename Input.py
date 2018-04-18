@@ -160,18 +160,22 @@ def pre_process_BRCA(box_dims=512):
     sdl.save_tfrecords(data_test, 1, file_root='data/BRCA_Test_')
 
 
-def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU'):
+def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU', Anal2=None):
 
     """
     Loads the files to a protobuf
     :param box_dims: dimensions of the saved images
     :param grouping: which group to load: Treated or Normal
     :param time_save: which time period Mammo to load: FU or ORIG
+    :param Anal2: Whether to do the subgroup analysis
     :return:
     """
 
     # Load the filenames and randomly shuffle them
     filenames = sdl.retreive_filelist('dcm', True, treat_dir)
+    if Anal2:
+        labels = sdl.load_CSV_Dict('PT', Anal2)
+        print ('Labels: ', labels)
 
     # Global variables
     display, counter, data, index, pt, excluded = [], [0, 0], {}, 0, 0, {}
@@ -200,7 +204,7 @@ def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU'):
         # Retreive labels: Chemoprevention/Treated/Patient 155/L CC
         basename = os.path.dirname(file)
         group = basename.split('/')[-3]
-        patient = int(basename.split('/')[-2].split(' ')[-1])
+        patient = basename.split('/')[-2].split(' ')[-1]
         side = basename.split('/')[-1].split(' ')[0]
         view = basename.split('/')[-1].split(' ')[1]
         if 'YR' in file: time='FU'
@@ -218,8 +222,14 @@ def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU'):
             if excluded[exclude_key] == True: continue
         except: pass
 
+        # Skip patients not in the dictionary
+        if Anal2:
+            try: _ = labels[patient]
+            except: continue
+
         # All of the patients are technically high risk
         label = 1
+        patient = int(patient)
 
         # Load and resize image
         try: image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
@@ -243,6 +253,8 @@ def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU'):
         index += 1
         counter[label] += 1
 
+        if index % 100 == 0: print ('%s Examples loaded' %index)
+
         # Done with this patient
         pt += 1
 
@@ -250,7 +262,8 @@ def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU'):
     print ('Made %s %s %s boxes from %s patients. Size: %s ' %(index, grouping, time_save, pt, len(data)))
 
     # Save the data
-    sdl.save_tfrecords(data, 1, file_root=('data/%s_%s_Train_' %(grouping, time_save)))
+    if Anal2: sdl.save_tfrecords(data, 1, file_root=('data/%s_Followup' %Anal2))
+    else: sdl.save_tfrecords(data, 1, file_root=('data/%s_%s_Train_' %(grouping, time_save)))
 
 
 def load_protobuf():
@@ -355,3 +368,5 @@ def load_validation_set():
 # pre_process_Treatment(512, 'Normal', 'FU')
 # pre_process_Treatment(512, 'Treated', 'ORIG')
 # pre_process_Treatment(512, 'Treated', 'FU')
+# pre_process_Treatment(512, 'Normal', 'FU', 'Normal_ORIG.csv')
+# pre_process_Treatment(512, 'Treated', 'FU', 'Treated_ORIG.csv')
