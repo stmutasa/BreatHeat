@@ -26,14 +26,24 @@ Made 1270 Normal ORIG boxes from 1270 patients. Size: 1270
 Made 1396 Normal FU boxes from 1396 patients. Size: 1396 
 Made 508 Treated ORIG boxes from 508 patients. Size: 508 
 Made 710 Treated FU boxes from 710 patients. Size: 710  
+Followups:
 Made 1073 Analysis 2 Normal FU boxes from 1073 patients. Size: 1073 
 Made 498 Analysis 2 Treated FU boxes from 498 patients. Size: 498 
+
+CC Only
+Made 636 Normal ORIG boxes from 636 patients. Size: 636 
+Made 704 Normal FU boxes from 704 patients. Size: 704 
+Made 254 Treated ORIG boxes from 254 patients. Size: 254 
+Made 352 Treated FU boxes from 352 patients. Size: 352 
+CC Followups:
+Made 258 Normal ORIG boxes from 258 patients. Size: 258 
+Made 119 Treated ORIG boxes from 119 patients. Size: 119 
 """
 
-tf.app.flags.DEFINE_integer('epoch_size', 1073, """Test examples: OF: 508""")
-tf.app.flags.DEFINE_integer('batch_size', 37, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 119, """Test examples: OF: 508""")
+tf.app.flags.DEFINE_integer('batch_size', 7, """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes + 1 for background""")
-tf.app.flags.DEFINE_string('test_files', 'Followup', """Files for testing have this name""")
+tf.app.flags.DEFINE_string('test_files', 'Treated_FU', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification """)
@@ -179,6 +189,9 @@ def eval():
                     print ('\nRight this batch: %s, Total: %s, Acc: %0.3f\n' %(right, total, acc))
                 else:
                     print (logit_track.shape, label_track.shape)
+                    _, label_track, logit_track = sdt.combine_predictions(label_track, logit_track, (pt_track + grp_track), len(logit_track))
+                    print(logit_track.shape, label_track.shape)
+
                     calc_labels = np.squeeze(label_track.astype(np.int8))
                     calc_logit = np.squeeze(np.argmax(logit_track.astype(np.float), axis=1))
                     logit_track = sdt.calc_softmax(logit_track)

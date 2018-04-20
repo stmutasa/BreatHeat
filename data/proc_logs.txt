@@ -10,3 +10,13 @@ Made 1270 Normal ORIG boxes from 1270 patients. Size: 1270
 Made 1396 Normal FU boxes from 1396 patients. Size: 1396 
 Made 508 Treated ORIG boxes from 508 patients. Size: 508 
 Made 710 Treated FU boxes from 710 patients. Size: 710  
+
+F/U Groups:
+Made 1073 Normal FU boxes from 1073 patients. Size: 1073 
+Made 498 Treated FU boxes from 498 patients. Size: 498 
+
+CC Only:
+Made 636 Normal ORIG boxes from 636 patients. Size: 636 
+Made 704 Normal FU boxes from 704 patients. Size: 704 
+Made 254 Treated ORIG boxes from 254 patients. Size: 254 
+Made 352 Treated FU boxes from 352 patients. Size: 352 

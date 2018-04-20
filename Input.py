@@ -160,7 +160,7 @@ def pre_process_BRCA(box_dims=512):
     sdl.save_tfrecords(data_test, 1, file_root='data/BRCA_Test_')
 
 
-def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU', Anal2=None):
+def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU', Anal2=None, skip_MLO=False):
 
     """
     Loads the files to a protobuf
@@ -168,6 +168,7 @@ def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU', Anal
     :param grouping: which group to load: Treated or Normal
     :param time_save: which time period Mammo to load: FU or ORIG
     :param Anal2: Whether to do the subgroup analysis
+    :param skip_MLO: whether to skip the MLO
     :return:
     """
 
@@ -226,6 +227,10 @@ def pre_process_Treatment(box_dims=512, grouping='Treated', time_save='FU', Anal
         if Anal2:
             try: _ = labels[patient]
             except: continue
+
+        # Skip MLO
+        if skip_MLO:
+            if 'CC' not in view.upper(): continue
 
         # All of the patients are technically high risk
         label = 1
@@ -364,9 +369,9 @@ def load_validation_set():
 
     return sdl.val_batches(data, FLAGS.batch_size)
 
-# pre_process_Treatment(512, 'Normal', 'ORIG')
-# pre_process_Treatment(512, 'Normal', 'FU')
-# pre_process_Treatment(512, 'Treated', 'ORIG')
-# pre_process_Treatment(512, 'Treated', 'FU')
-# pre_process_Treatment(512, 'Normal', 'FU', 'Normal_ORIG.csv')
-# pre_process_Treatment(512, 'Treated', 'FU', 'Treated_ORIG.csv')
+# pre_process_Treatment(512, 'Normal', 'ORIG', skip_MLO=True)
+# pre_process_Treatment(512, 'Normal', 'FU', skip_MLO=True)
+# pre_process_Treatment(512, 'Treated', 'ORIG', skip_MLO=True)
+# pre_process_Treatment(512, 'Treated', 'FU', skip_MLO=True)
+pre_process_Treatment(512, 'Normal', 'ORIG', 'Normal_FU.csv', skip_MLO=True)
+pre_process_Treatment(512, 'Treated', 'ORIG', 'Treated_FU.csv', skip_MLO=True)
