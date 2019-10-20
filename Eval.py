@@ -40,10 +40,10 @@ Made 258 Normal ORIG boxes from 258 patients. Size: 258
 Made 119 Treated ORIG boxes from 119 patients. Size: 119 
 """
 
-tf.app.flags.DEFINE_integer('epoch_size', 119, """Test examples: OF: 508""")
-tf.app.flags.DEFINE_integer('batch_size', 7, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 704, """Test examples: OF: 508""")
+tf.app.flags.DEFINE_integer('batch_size', 2, """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes + 1 for background""")
-tf.app.flags.DEFINE_string('test_files', 'Treated_FU', """Files for testing have this name""")
+tf.app.flags.DEFINE_string('test_files', 'Normal_FU', """Files for testing have this name""")
 tf.app.flags.DEFINE_integer('box_dims', 512, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification """)
@@ -115,6 +115,7 @@ def eval():
 
                 # Restore the graph
                 restorer.restore(sess, ckpt.model_checkpoint_path)
+                print ('Loaded checkpoint: ', ckpt.model_checkpoint_path)
 
                 # Extract the epoch
                 Epoch = ckpt.model_checkpoint_path.split('/')[-1].split('_')[-1]
@@ -188,19 +189,13 @@ def eval():
                     acc = 100 * (right/total)
                     print ('\nRight this batch: %s, Total: %s, Acc: %0.3f\n' %(right, total, acc))
                 else:
-                    print (logit_track.shape, label_track.shape)
-                    _, label_track, logit_track = sdt.combine_predictions(label_track, logit_track, (pt_track + grp_track), len(logit_track))
-                    print(logit_track.shape, label_track.shape)
-
                     calc_labels = np.squeeze(label_track.astype(np.int8))
                     calc_logit = np.squeeze(np.argmax(logit_track.astype(np.float), axis=1))
                     logit_track = sdt.calc_softmax(logit_track)
                     right, total = 0, 0
                     for z in range (logit_track.shape[0]):
-                        if calc_labels[z] == calc_logit[z]: # All positive in this case, save
-                            right += 1
-                            save_Data[z] = {'ID': z, 'PT': pt_track[z].decode("utf-8"), 'GRP': grp_track[z].decode("utf-8"),
-                                            'Class 1': logit_track[z][0], 'Class 2': logit_track[z][1]}
+                        save_Data[z] = {'ID': z, 'PT': pt_track[z], 'GRP': grp_track[z].decode("utf-8"), 'Class 1': logit_track[z][0], 'Class 2': logit_track[z][1]}
+                        if calc_labels[z] == calc_logit[z]: right += 1
                         total +=1
                     acc = 100 * (right / total)
                     print('\nRight this batch: %s, Total: %s, Acc: %0.3f\n' % (right, total, acc))
