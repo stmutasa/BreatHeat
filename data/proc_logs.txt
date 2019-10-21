@@ -24,3 +24,289 @@ Made 352 Treated FU boxes from 352 patients. Size: 352
 CC Followups:
 Made 258 Normal ORIG boxes from 258 patients. Size: 258 
 Made 119 Treated ORIG boxes from 119 patients. Size: 119 
+
+REDUX
+/home/stmutasa/miniconda3/envs/TF_GPU/bin/python /snap/pycharm-professional/159/helpers/pydev/pydevd.py --multiproc --qt-support=auto --client 127.0.0.1 --port 41985 --file /media/stmutasa/f2746aa8-29da-4d2c-9424-e7a934f6e66c/BreatHeat/Input.py
+pydev debugger: process 1885 is connecting
+
+Connected to pydev debugger (build 192.6817.19)
+/home/stmutasa/miniconda3/envs/TF_GPU/lib/python3.7/site-packages/skimage/util/dtype.py:131: UserWarning: Possible sign loss when converting negative image of type int16 to positive image of type uint16.
+  .format(dtypeobj_in, dtypeobj_out))
+/home/stmutasa/miniconda3/envs/TF_GPU/lib/python3.7/site-packages/skimage/util/dtype.py:135: UserWarning: Possible precision loss when converting from int16 to uint16
+  .format(dtypeobj_in, dtypeobj_out))
+Mask Failed... using method 2
+/home/stmutasa/miniconda3/envs/TF_GPU/lib/python3.7/site-packages/skimage/transform/_warps.py:23: UserWarning: The default multichannel argument (None) is deprecated.  Please specify either True or False explicitly.  multichannel will default to False starting with release 0.16.
+  warn('The default multichannel argument (None) is deprecated.  Please '
+/home/stmutasa/miniconda3/envs/TF_GPU/lib/python3.7/site-packages/skimage/util/dtype.py:135: UserWarning: Possible precision loss when converting from float64 to uint8
+  .format(dtypeobj_in, dtypeobj_out))
+Mask Failed... using method 2
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G2_Neg_MinorMutation/69/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G2_Neg_MinorMutation/69/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G2_Neg_MinorMutation/69/ser001img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G2_Neg_MinorMutation/69/ser001img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G2_Neg_MinorMutation/65/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G2_Neg_MinorMutation/65/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G2_Neg_MinorMutation/61/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G2_Neg_MinorMutation/61/ser001img00001.dcm
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/Cancer/Patient 13/L CC/ser55683img00001.dcm
+Failed to apply mask...  BRCApos_Cancer_13_LCC (1914, 2294) uint16 (1914, 2294) int16
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/Cancer/Patient 13/L MLO/ser55683img00005.dcm
+Failed to apply mask...  BRCApos_Cancer_13_LMLO (1914, 2294) uint16 (1914, 2294) int16
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/Cancer/Patient 13/R MLO/ser55683img00004.dcm
+Failed to apply mask...  BRCApos_Cancer_13_RMLO (1914, 2294) uint16 (1914, 2294) int16
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/Cancer/Patient 13/R CC/ser55683img00002.dcm
+Failed to apply mask...  BRCApos_Cancer_13_RCC (1914, 2294) uint16 (1914, 2294) int16
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Failed to generate mask...  BRCApos_Cancer_35_LCC
+Mask Failed... using method 2
+Failed to generate mask...  BRCApos_Cancer_35_RCC
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 22/L CC/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 22/L CC/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 22/L MLO/ser001img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 22/L MLO/ser001img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 22/R MLO/ser001img00006.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 22/R MLO/ser001img00006.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 22/R CC/ser001img00005.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 22/R CC/ser001img00005.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 28/L CC/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 28/L CC/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 28/L MLO/ser001img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 28/L MLO/ser001img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 40/L CC/ser001img00006.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 40/L CC/ser001img00006.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 40/L MLO/ser001img00009.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 40/L MLO/ser001img00009.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 40/R MLO/ser001img00003.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 40/R MLO/ser001img00003.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 40/R CC/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 40/R CC/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 31/L MLO/ser14140img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G1_PosBRCA/NoCancer/Patient 31/L MLO/ser14140img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser9999img00003.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser9999img00003.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser9999img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser9999img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser9999img00004.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser9999img00004.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser9999img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/37/ser9999img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/24/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/24/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/126/ser001img00004.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/126/ser001img00004.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/126/ser001img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/126/ser001img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/34/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/34/ser001img00001.dcm
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Failed to generate mask...  BRCAneg_NoMutations_30_1
+Mask Failed... using method 2
+Failed to generate mask...  BRCAneg_NoMutations_30_5
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/30/img001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/30/img001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/25/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/25/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/16/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/16/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/33/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/33/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/22/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/22/ser001img00001.dcm
+Mask Failed... using method 2
+Couldn't find any segment
+Failed to generate mask...  BRCAneg_NoMutations_41_4
+Mask Failed... using method 2
+Couldn't find any segment
+Failed to generate mask...  BRCAneg_NoMutations_41_1
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/129/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/129/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/129/ser001img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/129/ser001img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/29/ser99999img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/29/ser99999img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/29/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/29/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/29/ser99999img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/29/ser99999img00001.dcm
+Mask Failed... using method 2
+Couldn't find any segment
+Failed to generate mask...  BRCAneg_NoMutations_56_4
+Mask Failed... using method 2
+Couldn't find any segment
+Failed to generate mask...  BRCAneg_NoMutations_56_2
+Mask Failed... using method 2
+Failed to generate mask...  BRCAneg_NoMutations_39_3
+Mask Failed... using method 2
+Mask Failed... using method 2
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/31/ser48003img00006.dcm
+Failed to apply mask...  BRCAneg_NoMutations_31_6 (1914, 2294) uint16 (1914, 2294) int16
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/31/ser48003img00001.dcm
+Mask Failed... using method 2
+Failed to generate mask...  BRCAneg_NoMutations_31_1
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/31/ser48003img00010.dcm
+Failed to apply mask...  BRCAneg_NoMutations_31_0 (1914, 2294) uint16 (1914, 2294) int16
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/35/ser001img00004.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/35/ser001img00004.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/35/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/35/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/35/ser001img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/35/ser001img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/35/ser001img00003.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/35/ser001img00003.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/133/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/133/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/27/img003.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/27/img003.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/27/img001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/27/img001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/27/img002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/27/img002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/26/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/26/ser001img00001.dcm
+Mask Failed... using method 2
+Mask Failed... using method 2
+Couldn't find any segment
+Failed to generate mask...  BRCAneg_NoMutations_53_9
+Mask Failed... using method 2
+Couldn't find any segment
+Failed to generate mask...  BRCAneg_NoMutations_53_1
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/53/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/53/ser001img00001.dcm
+Mask Failed... using method 2
+Couldn't find any segment
+Failed to generate mask...  BRCAneg_NoMutations_53_5
+Mask Failed... using method 2
+Mask Failed... using method 2
+Failed to generate mask...  BRCAneg_NoMutations_53_9
+Mask Failed... using method 2
+Couldn't find any segment
+Failed to generate mask...  BRCAneg_NoMutations_53_7
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/21/img001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/21/img001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/171/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/171/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/81/ser001img00010.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/81/ser001img00010.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/81/ser001img00008.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/81/ser001img00008.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/81/ser001img00009.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/81/ser001img00009.dcm
+Mask Failed... using method 2
+breast and mask side mismatch. inverting!
+Failed to generate mask...  BRCAneg_NoMutations_101_2
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00004.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00004.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00002.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00003.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00003.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00005.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/59/ser001img00005.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/135/ser001img00004.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/135/ser001img00004.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/135/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/135/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/11/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/11/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/36/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/36/ser001img00001.dcm
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/28/ser13208img00003.dcm
+Failed to apply mask...  BRCAneg_NoMutations_28_3 (2394, 3062) uint16 (2394, 3062) int16
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/28/ser13208img00004.dcm
+Failed to apply mask...  BRCAneg_NoMutations_28_4 (2394, 3062) uint16 (2394, 3062) int16
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/28/ser13208img00005.dcm
+Failed to apply mask...  BRCAneg_NoMutations_28_5 (2394, 3062) uint16 (2394, 3062) int16
+Loaded DICOM with ITK  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/28/ser13208img00001.dcm
+Failed to apply mask...  BRCAneg_NoMutations_28_1 (2394, 3062) uint16 (2394, 3062) int16
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/67/ser001img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/67/ser001img00001.dcm
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/67/ser001img00002.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/BRCA/G3_Neg_NoMutations/67/ser001img00002.dcm
+Made 686 BRCA boxes from 686 patients [542, 144]
+Saving segregated tfrecords... 263 in data/BRCA_0
+WARNING: Logging before flag parsing goes to stderr.
+W1020 21:40:46.534392 139799335659264 deprecation_wrapper.py:119] From /home/stmutasa/PycharmProjects/SODKit/SODLoader.py:2273: The name tf.python_io.TFRecordWriter is deprecated. Please use tf.io.TFRecordWriter instead.
+
+Saving segregated tfrecords... 90 in data/BRCA_1
+Saving segregated tfrecords... 236 in data/BRCA_2
+Saving segregated tfrecords... 97 in data/BRCA_3
+Mask Failed... using method 2
+Failed to generate mask...  LowRisk_Normal_666_1
+Mask Failed... using method 2
+Mask Failed... using method 2
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/RiskStudy/LowRisk/Normal/879/ser23662img00001.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/RiskStudy/LowRisk/Normal/879/ser23662img00001.dcm
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Failed to generate mask...  LowRisk_Normal_665_2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Made 1476 RISK boxes from 1476 patients [1266, 210]
+Saving segregated tfrecords... 371 in data/RISK_0
+Saving segregated tfrecords... 368 in data/RISK_1
+Saving segregated tfrecords... 373 in data/RISK_2
+Saving segregated tfrecords... 364 in data/RISK_3
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/Calcs/Eduardo/ADH/Patient 6 YES/2/ser001img00003.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/Calcs/Eduardo/ADH/Patient 6 YES/2/ser001img00003.dcm
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+Failed to generate mask...  CALCSpure_67_6_CC
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/Calcs/Eduardo/ADH/Patient 6 YES/1/ser001img00004.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/Calcs/Eduardo/ADH/Patient 6 YES/1/ser001img00004.dcm
+Mask Failed... using method 2
+Mask Failed... using method 2
+breast and mask side mismatch. inverting!
+Failed to generate mask...  CALCSADH_33_2_MLO
+Mask Failed... using method 2
+Mask Failed... using method 2
+Mask Failed... using method 2
+breast and mask side mismatch. inverting!
+Failed to generate mask...  CALCSADH_33_1_CC
+Mask Failed... using method 2
+Mask Failed... using method 2
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/Calcs/Eduardo/ADH/Patient 10 YES/1/ser001img00004.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/Calcs/Eduardo/ADH/Patient 10 YES/1/ser001img00004.dcm
+Mask Failed... using method 2
+Unable to retreive Image Pixel Array:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/Calcs/Eduardo/ADH/Patient 10 YES/2/ser001img00004.dcm
+Failed to load:  /home/stmutasa/PycharmProjects/Datasets/BreastData/Mammo/Calcs/Eduardo/ADH/Patient 10 YES/2/ser001img00004.dcm
+Made 404 CALCS boxes from 404 patients
+Saving segregated tfrecords... 102 in data/CALCS_0
+Saving segregated tfrecords... 101 in data/CALCS_1
+Saving segregated tfrecords... 100 in data/CALCS_2
+Saving segregated tfrecords... 101 in data/CALCS_3
+
+Cancer Counts:  [0, 0]
+
+Process finished with exit code 0
+
