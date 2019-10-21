@@ -43,8 +43,6 @@ risk_dir = home_dir + 'RiskStudy/'
 brca_dir = home_dir + 'BRCA/'
 calc_dir = home_dir + 'Calcs/Eduardo/'
 
-Cancer_count = [0, 0]
-
 sdl = SDL.SODLoader(data_root=home_dir)
 sdd = SDD.SOD_Display()
 
@@ -140,7 +138,7 @@ def pre_process_BRCA(box_dims=1024):
 
     # Save the data.
     sdl.save_dict_filetypes(data[0])
-    sdl.save_filtered_tfrecords(4, data, 'patient', 'data/BRCA')
+    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/BRCA')
 
 
 def pre_process_RISK(box_dims=1024):
@@ -226,7 +224,7 @@ def pre_process_RISK(box_dims=1024):
 
     # Save the data.
     sdl.save_dict_filetypes(data[0])
-    sdl.save_filtered_tfrecords(4, data, 'patient', 'data/RISK')
+    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/RISK')
 
 
 def pre_process_CALCS(box_dims=1024):
@@ -316,79 +314,141 @@ def pre_process_CALCS(box_dims=1024):
 
     # Save the data. Saving with size 2 goes sequentially
     sdl.save_dict_filetypes(data[0])
-    sdl.save_filtered_tfrecords(4, data, 'patient', 'data/CALCS')
+    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/CALCS')
 
 
-def load_protobuf():
+# Load the protobuf
+def load_protobuf(training=True):
 
     """
     Loads the protocol buffer into a form to send to shuffle
-    :param 
-    :return:
     """
 
-    # Load all the filenames in glob
-    filenames1 = glob.glob('data/*.tfrecords')
-    filenames = []
+    # Define filenames
+    if training:
+        all_files = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
+        filenames = [x for x in all_files if FLAGS.test_files not in x]
+    else:
+        all_files = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
+        filenames = [x for x in all_files if FLAGS.test_files in x]
 
-    # Define the filenames to remove
-    for i in range(0, len(filenames1)):
-        if FLAGS.test_files not in filenames1[i]: filenames.append(filenames1[i])
+    print('******** Loading Files: ', filenames)
 
-    # Show the file names
-    print('Training files: %s' % filenames)
+    # Create a dataset from the protobuf
+    dataset = tf.data.TFRecordDataset(filenames)
 
-    # Load the dictionary
-    data = sdl.load_tfrecords(filenames, FLAGS.box_dims, tf.float32, channels=1, segments='label_data')
+    # Shuffle the entire dataset then create a batch
+    if training: dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size)
 
-    # Data Augmentation ------------------
+    # Load the tfrecords into the dataset with the first map call
+    _records_call = lambda dataset: \
+        sdl.load_tfrecords(dataset, [FLAGS.box_dims, FLAGS.box_dims], tf.float32,
+                           segments='label_data', segments_dtype=tf.uint8, segments_shape=[FLAGS.box_dims, FLAGS.box_dims])
 
-    # Random rotate
-    angle = tf.random_uniform([], -0.45, 0.45)
-    data['data'], data['label_data'] = tf.contrib.image.rotate(data['data'], angle), tf.contrib.image.rotate(data['label_data'], angle)
+    # Parse the record into tensors
+    dataset = dataset.map(_records_call, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    # Random crop
-    resize_factor = int(FLAGS.network_dims/0.9)
-    data['data'] = tf.image.resize_images(data['data'], [resize_factor, resize_factor])
-    data['label_data'] = tf.image.resize_images(data['label_data'], [resize_factor, resize_factor])
-    data['data'] = tf.random_crop(data['data'], [FLAGS.network_dims, FLAGS.network_dims, 1])
-    data['label_data'] = tf.random_crop(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims, 1])
+    # Fuse the mapping and batching
+    scope = 'data_augmentation' if training else 'input'
+    with tf.name_scope(scope):
 
-    # Random shear:
-    rand = []
-    for z in range(4):
-        rand.append(tf.random_uniform([], minval=-0.2, maxval=0.2, dtype=tf.float32))
-    data['data'] = tf.contrib.image.transform(data['data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
-    data['label_data'] = tf.contrib.image.transform(data['label_data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
+        # Map the data set
+        dataset = dataset.map(DataPreprocessor(training), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    # Randomly flip
-    def flip(mode=None):
+    # Batch the dataset and drop remainder. Can try batch before map if map is small
+    dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True)
 
-        if mode == 1: img, lbl = tf.image.flip_up_down(data['data']), tf.image.flip_up_down(data['label_data'])
-        elif mode == 2: img, lbl = tf.image.flip_left_right(data['data']), tf.image.flip_left_right(data['label_data'])
-        else: img, lbl = data['data'], data['label_data']
-        return img, lbl
+    # cache and Prefetch
+    dataset = dataset.cache()
+    dataset = dataset.prefetch(buffer_size=FLAGS.batch_size)
 
-    data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random_uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(1), lambda: flip(0))
-    data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random_uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(2), lambda: flip(0))
+    # Repeat input indefinitely
+    dataset = dataset.repeat()
 
-    # # Random contrast and brightness
-    # data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
-    # data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
-    #
-    # # Random gaussian noise
-    # T_noise = tf.random_uniform([], 0, 0.1)
-    # noise = tf.random_uniform(shape=[FLAGS.network_dims, FLAGS.network_dims, 1], minval=-T_noise, maxval=T_noise)
-    # data['data'] = tf.add(data['data'], tf.cast(noise, tf.float32))
+    # Make an initializable iterator
+    iterator = dataset.make_initializable_iterator()
 
-    # Display the images
-    tf.summary.image('Train IMG', tf.reshape(data['data'], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 4)
+    # Retreive the batch
+    examples = iterator.get_next()
 
-    # Return data dictionary
-    return sdl.randomize_batches(data, FLAGS.batch_size)
+    # Return data as a dictionary
+    return examples, iterator
 
 
-pre_process_BRCA()
-pre_process_RISK()
-pre_process_CALCS()
-print ('\nCancer Counts: ', Cancer_count)
+class DataPreprocessor(object):
+
+    # Applies transformations to dataset
+
+  def __init__(self, distords):
+
+    self._distords = distords
+
+  def __call__(self, data):
+
+    if self._distords:  # Training
+
+        # Expand dims by 1
+        data['data'] = tf.expand_dims(data['data'], -1)
+        data['label_data'] = tf.expand_dims(data['label_data'], -1)
+
+        # Random rotate
+        # angle = tf.random_uniform([], -0.45, 0.45)
+        # data['data'] = tf.contrib.image.rotate(data['data'], angle, interpolation='BILINEAR')
+        # data['label_data'] = tf.contrib.image.rotate(data['label_data'], angle, interpolation='NEAREST')
+
+        # Random shear:
+        # rand = []
+        # for z in range(4):
+        #     rand.append(tf.random_uniform([], minval=-0.2, maxval=0.2, dtype=tf.float32))
+        # data['data'] = tf.contrib.image.transform(data['data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
+        # data['label_data'] = tf.contrib.image.transform(data['label_data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
+
+        # Reshape, bilinear for labels, cubic for data
+        data['data'] = tf.image.resize_images(data['data'], [FLAGS.network_dims, FLAGS.network_dims],
+                                              tf.compat.v1.image.ResizeMethod.BICUBIC)
+        data['label_data'] = tf.image.resize_images(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims],
+                                                    tf.compat.v1.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+        # Randomly flip
+        def flip(mode=None):
+
+            if mode == 1:
+                img, lbl = tf.image.flip_up_down(data['data']), tf.image.flip_up_down(data['label_data'])
+            elif mode == 2:
+                img, lbl = tf.image.flip_left_right(data['data']), tf.image.flip_left_right(data['label_data'])
+            else:
+                img, lbl = data['data'], data['label_data']
+            return img, lbl
+
+        # Maxval is not included in the range
+        data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random.uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(1), lambda: flip(0))
+        data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random.uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(2), lambda: flip(0))
+
+        # Random contrast and brightness
+        # data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
+        # data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
+
+        # Random gaussian noise
+        T_noise = tf.random.uniform([], 0, 0.1)
+        noise = tf.random.uniform(shape=[FLAGS.network_dims, FLAGS.network_dims, 1], minval=-T_noise, maxval=T_noise)
+        data['data'] = tf.add(data['data'], tf.cast(noise, tf.float32))
+
+
+    else: # Testing
+
+        # Expand dims by 1
+        data['data'] = tf.expand_dims(data['data'], -1)
+        data['label_data'] = tf.expand_dims(data['label_data'], -1)
+
+        # Reshape, bilinear for labels, cubic for data
+        data['data'] = tf.image.resize_images(data['data'], [FLAGS.batch_size, FLAGS.network_dims, FLAGS.network_dims],
+                                              tf.compat.v1.image.ResizeMethod.BICUBIC)
+        data['label_data'] = tf.image.resize_images(data['label_data'], [FLAGS.batch_size, FLAGS.network_dims, FLAGS.network_dims],
+                                                    tf.compat.v1.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+    return data
+
+
+# pre_process_BRCA()
+# pre_process_RISK()
+# pre_process_CALCS()
