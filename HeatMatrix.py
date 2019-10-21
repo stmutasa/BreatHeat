@@ -182,8 +182,7 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
         loss = tf.multiply(loss, mask)
 
         # Display loss landscape
-        tf.summary.image('Loss_Landscape1', tf.reshape(loss[im_num], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-        tf.summary.image('Loss_Landscape0', tf.reshape(loss[im_num], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
+        tf.summary.image('Loss_Landscape', tf.reshape(loss[im_num], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
 
         loss = tf.reduce_mean(loss)
         tf.summary.scalar('Dice_Loss', loss)

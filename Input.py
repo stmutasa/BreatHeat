@@ -441,9 +441,9 @@ class DataPreprocessor(object):
         data['label_data'] = tf.expand_dims(data['label_data'], -1)
 
         # Reshape, bilinear for labels, cubic for data
-        data['data'] = tf.image.resize_images(data['data'], [FLAGS.batch_size, FLAGS.network_dims, FLAGS.network_dims],
+        data['data'] = tf.image.resize_images(data['data'], [FLAGS.network_dims, FLAGS.network_dims],
                                               tf.compat.v1.image.ResizeMethod.BICUBIC)
-        data['label_data'] = tf.image.resize_images(data['label_data'], [FLAGS.batch_size, FLAGS.network_dims, FLAGS.network_dims],
+        data['label_data'] = tf.image.resize_images(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims],
                                                     tf.compat.v1.image.ResizeMethod.NEAREST_NEIGHBOR)
 
     return data
