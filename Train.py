@@ -61,7 +61,7 @@ def train():
         labels = data['label_data']
 
         # Calculate loss
-        Loss = network.total_loss(logits, labels, loss_type='WCE')
+        Loss = network.total_loss(logits, labels, loss_type='DICE')
 
         # Add the L2 regularization loss
         loss = tf.add(Loss, l2loss, name='TotalLoss')
