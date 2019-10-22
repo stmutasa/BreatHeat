@@ -19,11 +19,11 @@ _author_ = 'Simi'
 FLAGS = tf.app.flags.FLAGS
 
 # >5k example lesions total
-tf.app.flags.DEFINE_integer('epoch_size', 264, """Batch 1""")
-tf.app.flags.DEFINE_integer('batch_size', 264, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 370, """Batch 1""")
+tf.app.flags.DEFINE_integer('batch_size', 370, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'Initial_Dice/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Dice2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 tf.app.flags.DEFINE_string('test_files', 'RISK_3', """Testing files""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
@@ -140,9 +140,13 @@ def test():
                     mask[mask>1] = True
                     heatmap = y_pred[..., 1]
                     blank_heatmap = heatmap * mask
-                    sdd.display_volume(heatmap[30:45], False, cmap='jet')
-                    sdd.display_volume(heatmap[30:45], False, cmap='jet')
-                    sdd.display_volume(blank_heatmap[30:45], True, cmap='jet')
+                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
+                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
+                    # sdd.display_volume(blank_heatmap[30:45], True, cmap='jet')
+                    for z in range (200, 264):
+                        idd = examples['patient'][z]
+                        sdd.display_single_image(heatmap[z], False, cmap='jet', title=idd)
+                    sdd.display_single_image(heatmap[0], cmap='jet', title=idd)
 
                     # Testing
                     pred_map = sdt.return_binary_segmentation(y_pred, 0.5, 1, True)

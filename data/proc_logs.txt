@@ -27,18 +27,22 @@ Made 119 Treated ORIG boxes from 119 patients. Size: 119
 
 REDUX
 
-Saving segregated tfrecords... 102 in data/CALCS_0
+Saving segregated tfrecords... 101 in data/CALCS_0
 Saving segregated tfrecords... 100 in data/CALCS_1
 Saving segregated tfrecords... 103 in data/CALCS_2
-Saving segregated tfrecords... 99 in data/CALCS_3
+Saving segregated tfrecords... 100 in data/CALCS_3
 
-Saving segregated tfrecords... 371 in data/RISK_0
-Saving segregated tfrecords... 368 in data/RISK_1
-Saving segregated tfrecords... 373 in data/RISK_2
-Saving segregated tfrecords... 364 in data/RISK_3
+Saving segregated tfrecords... 372 in data/RISK_0
+Saving segregated tfrecords... 362 in data/RISK_1
+Saving segregated tfrecords... 372 in data/RISK_2
+Saving segregated tfrecords... 370 in data/RISK_3
 
-Saving segregated tfrecords... 263 in data/BRCA_0
-Saving segregated tfrecords... 90 in data/BRCA_1
-Saving segregated tfrecords... 236 in data/BRCA_2
-Saving segregated tfrecords... 97 in data/BRCA_3
+Saving segregated tfrecords... 171 in data/BRCA_0
+Saving segregated tfrecords... 159 in data/BRCA_1
+Saving segregated tfrecords... 156 in data/BRCA_2
+Saving segregated tfrecords... 200 in data/BRCA_3
+
+Total:2566
+
+
 

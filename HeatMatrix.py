@@ -258,13 +258,13 @@ def backward_pass(total_loss):
         train_op: operation for training"""
 
     # Get the tensor that keeps track of step in this graph or create one if not there
-    global_step = tf.contrib.framework.get_or_create_global_step()
+    global_step = tf.train.get_or_create_global_step()
 
     # Print summary of total loss
     tf.summary.scalar('Total_Loss', total_loss)
 
     # Decay the learning rate
-    dk_steps = int((FLAGS.epoch_size / FLAGS.batch_size) * 150)
+    dk_steps = int((FLAGS.epoch_size / FLAGS.batch_size) * 75)
     lr_decayed = tf.train.cosine_decay_restarts(FLAGS.learning_rate, global_step, dk_steps)
 
     # Compute the gradients. NAdam optimizer came in tensorflow 1.2
@@ -308,7 +308,9 @@ def inputs(training=True, skip=True):
 
     # To Do: Skip part 1 and 2 if the protobuff already exists
     if not skip:
-        Input.pre_proc()
+        Input.pre_process_BRCA(FLAGS.box_dims)
+        Input.pre_process_RISK(FLAGS.box_dims)
+        Input.pre_process_CALCS(FLAGS.box_dims)
 
     else:
         print('-------------------------Previously saved records found! Loading...')

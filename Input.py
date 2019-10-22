@@ -56,7 +56,7 @@ def pre_process_BRCA(box_dims=1024):
 
     # Load the filenames and randomly shuffle them
     filenames = sdl.retreive_filelist('dcm', True, brca_dir)
-    #shuffle(filenames)
+    shuffle(filenames)
 
     # Global variables
     display, counter, data, data_test, index, pt = [], [0, 0], {}, {}, 0, 0
@@ -150,7 +150,7 @@ def pre_process_RISK(box_dims=1024):
 
     # Load the filenames and randomly shuffle them
     filenames = sdl.retreive_filelist('dcm', True, risk_dir)
-    #shuffle(filenames)
+    shuffle(filenames)
 
     # Global variables
     display, counter, data, data_test, index, pt = [], [0, 0], {}, {}, 0, 0
@@ -449,6 +449,3 @@ class DataPreprocessor(object):
     return data
 
 
-# pre_process_BRCA()
-# pre_process_RISK()
-# pre_process_CALCS()
