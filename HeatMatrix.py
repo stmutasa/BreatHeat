@@ -84,6 +84,12 @@ def forward_pass_unet(images, phase_train):
     dconv = sdn.deconvolution('Dconv6', dconv, 2, K, S=2, phase_train=phase_train, concat=False, concat_var=conv1, out_shape=[FLAGS.batch_size, 256, 256, K])
     dconv = sdn.convolution('Dconv6b', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
 
+    # TODO: Extra smoothing convolutions
+    dconv = sdn.residual_layer('Smooth1', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
+    dconv = sdn.convolution('Smooth2', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
+    dconv = sdn.residual_layer('Smooth3', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
+
+
     # Output is a 1x1 box with 3 labels
     Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False)
 

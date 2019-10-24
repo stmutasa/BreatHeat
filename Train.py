@@ -17,7 +17,7 @@ tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the 
 tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification """)
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_epochs', 250, """Number of epochs to run""")
+tf.app.flags.DEFINE_integer('num_epochs', 276, """Number of epochs to run""")
 tf.app.flags.DEFINE_integer('epoch_size', 2200, """How many examples""")
 tf.app.flags.DEFINE_integer('print_interval', 10, """How often to print a summary to console during training""")
 tf.app.flags.DEFINE_integer('checkpoint_interval', 25, """How many Epochs to wait before saving a checkpoint""")
@@ -37,7 +37,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Dice2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Dice3/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 def train():
