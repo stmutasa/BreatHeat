@@ -9,7 +9,6 @@ import SOD_Display as SDD
 import glob
 from pathlib import Path
 import numpy as np
-import numpy.ma as ma
 
 sdl= SDL.SODLoader(str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/')
 sdd = SDD.SOD_Display()
@@ -24,7 +23,7 @@ tf.app.flags.DEFINE_integer('epoch_size', 370, """Batch 1""")
 tf.app.flags.DEFINE_integer('batch_size', 370, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'Dice3/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Initial_Dice/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 tf.app.flags.DEFINE_string('test_files', 'RISK_3', """Testing files""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
@@ -137,17 +136,22 @@ def test():
                 finally:
 
                     # TODO: Testing:
-                    mask = np.squeeze(examples['label_data']>0).astype(np.bool)
-                    heatmap_high = y_pred[..., 1]
-                    heatmap_low = y_pred[..., 0]
-                    for z in range (200, 210):
-                        high_mean = ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean()
-                        low_mean = ma.masked_array(heatmap_low[z].flatten(), mask=~mask[z].flatten()).mean()
-                        idd = ('High: %.2f Low: %.2f %s' %(high_mean, low_mean, examples['patient'][z]))
-                        print (idd)
-                        sdd.display_single_image(heatmap_low[z], False, cmap='jet', title='L_' + idd)
-                        sdd.display_single_image(heatmap_high[z], False, title='H_' + idd)
-                    sdd.display_single_image(mask[0], cmap='jet', title=idd)
+                    cnt = [0, 0]
+                    for z in range (FLAGS.batch_size):
+                        it = int(examples['cancer'][z])
+                        cnt[it] +=1
+                    print ('Counts: ', cnt)
+                    mask = np.squeeze(examples['label_data'])
+                    mask[mask>1] = True
+                    heatmap = y_pred[..., 1]
+                    blank_heatmap = heatmap * mask
+                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
+                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
+                    # sdd.display_volume(blank_heatmap[30:45], True, cmap='jet')
+                    for z in range (200, 264):
+                        idd = examples['patient'][z]
+                        sdd.display_single_image(heatmap[z], False, cmap='jet', title=idd)
+                    sdd.display_single_image(heatmap[0], cmap='jet', title=idd)
 
                     # Testing
                     pred_map = sdt.return_binary_segmentation(y_pred, 0.5, 1, True)

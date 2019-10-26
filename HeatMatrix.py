@@ -84,12 +84,6 @@ def forward_pass_unet(images, phase_train):
     dconv = sdn.deconvolution('Dconv6', dconv, 2, K, S=2, phase_train=phase_train, concat=False, concat_var=conv1, out_shape=[FLAGS.batch_size, 256, 256, K])
     dconv = sdn.convolution('Dconv6b', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
 
-    # TODO: Extra smoothing convolutions
-    dconv = sdn.residual_layer('Smooth1', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
-    dconv = sdn.convolution('Smooth2', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
-    dconv = sdn.residual_layer('Smooth3', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
-
-
     # Output is a 1x1 box with 3 labels
     Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False)
 
@@ -237,10 +231,6 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
 
         # Add the losses with a weighting for each
         loss = wce*1 + dice*10
-
-        # Display loss landscape
-        tf.summary.image('Loss_Landscape1', tf.reshape(loss[im_num, :, :, 1], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-        tf.summary.image('Loss_Landscape0', tf.reshape(loss[im_num, :, :, 0], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
 
         # Output the summary of the MSE and MAE
         tf.summary.scalar('Cross_Entropy_Loss', wce)

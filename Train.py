@@ -29,6 +29,8 @@ tf.app.flags.DEFINE_float('l2_gamma', 1e-3, """ The gamma value for regularizati
 tf.app.flags.DEFINE_float('moving_avg_decay', 0.999, """ The decay rate for the moving average tracker""")
 tf.app.flags.DEFINE_float('loss_factor', 1.0, """The loss weighting factor""")
 tf.app.flags.DEFINE_integer('loss_class', 1, """For classes this and above, apply the above loss factor.""")
+tf.app.flags.DEFINE_float('seg_factor', 1.0, """The loss weighting factor for segmentation""")
+tf.app.flags.DEFINE_integer('epoch_class', 150, """What epoch to start training the classifier""")
 
 # Hyperparameters to control the optimizer
 tf.app.flags.DEFINE_float('learning_rate', 1e-2, """Initial learning rate""")
@@ -37,8 +39,8 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Dice3/', """Unique file name for this training run""")
-tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
+tf.app.flags.DEFINE_string('RunInfo', 'Branch2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 
 def train():
 
@@ -55,16 +57,19 @@ def train():
         data['data'] = tf.reshape(data['data'], [FLAGS.batch_size, FLAGS.network_dims, FLAGS.network_dims])
 
         # Perform the forward pass:
-        logits, l2loss = network.forward_pass_unet(data['data'], phase_train=phase_train)
+        fpass = network.forward_pass_unet(data['data'], phase_train=phase_train)
 
         # Labels
-        labels = data['label_data']
+        labels = (data['cancer'], data['label_data'])
 
         # Calculate loss
-        Loss = network.total_loss(logits, labels, loss_type='DICE')
+        losses = network.total_loss(fpass, labels, loss_type='DICE')
 
         # Add the L2 regularization loss
-        loss = tf.add(Loss, l2loss, name='TotalLoss')
+        loss = tf.add(losses[0], fpass[2], name='TotalLoss')
+
+        # Retreive the losses collection for display. [L2, Seg, Class, Sum}
+        losses.append(fpass[2])
 
         # Update the moving average batch norm ops
         extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -132,13 +137,10 @@ def train():
                 if i % print_interval == 0:
 
                     # Load some metrics
-                    lbl1, logtz, loss1, loss2, tot = mon_sess.run([labels, logits, Loss, l2loss, loss], feed_dict={phase_train: True})
+                    lbl1, Losses = mon_sess.run([labels, losses], feed_dict={phase_train: True})
 
                     # Make losses display in ppm
-                    tot *= 1e3
-                    loss1 *= 1e3
-                    loss2 *= 1e3
-
+                    Losses = [x*1e3 for x in Losses]
                     # Get timing stats
                     elapsed = timer / print_interval
                     timer = 0
@@ -151,8 +153,8 @@ def train():
 
                     # Print the data
                     print('-' * 70)
-                    print('Epoch %d, L2 Loss: = %.3f (%.1f eg/s), Total Loss: %.3f Objective Loss: %.4f'
-                          % (Epoch, loss2, FLAGS.batch_size / elapsed, tot, loss1))
+                    print('Epoch %d, (%.1f eg/s), Losses [Total, Class, Seg, L2]: %s'
+                          % (Epoch, FLAGS.batch_size / elapsed, Losses))
 
                     # Run a session to retrieve our summaries
                     summary = mon_sess.run(all_summaries, feed_dict={phase_train: True})
