@@ -9,6 +9,7 @@ import SOD_Display as SDD
 import glob
 from pathlib import Path
 import numpy as np
+import numpy.ma as ma
 
 sdl= SDL.SODLoader(str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/')
 sdd = SDD.SOD_Display()
@@ -23,7 +24,7 @@ tf.app.flags.DEFINE_integer('epoch_size', 370, """Batch 1""")
 tf.app.flags.DEFINE_integer('batch_size', 370, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'Initial_Dice/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Branch/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 tf.app.flags.DEFINE_string('test_files', 'RISK_3', """Testing files""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
@@ -54,8 +55,8 @@ def test():
 
 
     # Makes this the default graph where all ops will be added
-    # with tf.Graph().as_default(), tf.device('/cpu:0'):
-    with tf.Graph().as_default(), tf.device('/gpu:' + str(FLAGS.GPU)):
+    with tf.Graph().as_default(), tf.device('/cpu:0'):
+    #with tf.Graph().as_default(), tf.device('/gpu:' + str(FLAGS.GPU)):
 
         # Define phase of training
         phase_train = tf.placeholder(tf.bool)
@@ -66,11 +67,15 @@ def test():
         # Define input shape
         data['data'] = tf.reshape(data['data'], [FLAGS.batch_size, FLAGS.network_dims, FLAGS.network_dims])
 
-        #  Perform the forward pass:
-        logits, l2loss = network.forward_pass_unet(data['data'], phase_train=phase_train)
+        # Perform the forward pass:
+        fpass = network.forward_pass_unet(data['data'], phase_train=phase_train)
+
+        # Labels
+        labels = (data['cancer'], data['label_data'])
 
         # Retreive softmax
-        softmax = tf.nn.softmax(logits)
+        softmax_seg = tf.nn.softmax(fpass[1])
+        softmax_class = tf.nn.softmax(fpass[0])
 
         # Initialize variables operation
         var_init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
@@ -125,7 +130,7 @@ def test():
                     while step < max_steps:
 
                         # Load some metrics for testing
-                        y_pred, examples = mon_sess.run([softmax, data], feed_dict={phase_train: False})
+                        y_pred, examples, class_logits, laybels = mon_sess.run([softmax_seg, data, fpass[0], labels], feed_dict={phase_train: False})
 
                         # Increment step
                         step += 1
@@ -135,31 +140,27 @@ def test():
 
                 finally:
 
-                    # TODO: Testing:
-                    cnt = [0, 0]
-                    for z in range (FLAGS.batch_size):
-                        it = int(examples['cancer'][z])
-                        cnt[it] +=1
-                    print ('Counts: ', cnt)
-                    mask = np.squeeze(examples['label_data'])
-                    mask[mask>1] = True
-                    heatmap = y_pred[..., 1]
-                    blank_heatmap = heatmap * mask
-                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
-                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
-                    # sdd.display_volume(blank_heatmap[30:45], True, cmap='jet')
-                    for z in range (200, 264):
-                        idd = examples['patient'][z]
-                        sdd.display_single_image(heatmap[z], False, cmap='jet', title=idd)
-                    sdd.display_single_image(heatmap[0], cmap='jet', title=idd)
+                    # First classification loss
+                    #data, labz, logz = sdt.combine_predictions(laybels[0], class_logits, examples['patient'], FLAGS.batch_size)
+                    # sdt.calculate_metrics(logz, labz, 1, step)
+                    sdt.calculate_metrics(class_logits, laybels[0], 1, step)
+                    sdt.retreive_metrics_classification(Epoch, True)
 
-                    # Testing
-                    pred_map = sdt.return_binary_segmentation(y_pred, 0.5, 1, True)
-                    print ('Epoch: %s, Best Epoch: %s (%.3f)' %(Epoch, best_epoch, best_MAE))
-                    dice, mcc = sdt.calculate_segmentation_metrics(pred_map, examples['label_data'])
+                    # TODO: Testing:
+                    mask = np.squeeze(examples['label_data']>0).astype(np.bool)
+                    heatmap_high = y_pred[..., 1]
+                    heatmap_low = y_pred[..., 0]
+                    for z in range (200, 215):
+                        high_mean = ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean()
+                        low_mean = ma.masked_array(heatmap_low[z].flatten(), mask=~mask[z].flatten()).mean()
+                        idd = ('High: %.3f Low: %.3f %s' %(high_mean, low_mean, examples['patient'][z]))
+                        print (idd)
+                    #     sdd.display_single_image(heatmap_low[z], False, cmap='jet', title='L_' + idd)
+                    #     sdd.display_single_image(heatmap_high[z], False, title='H_' + idd)
+                    # sdd.display_single_image(mask[0], cmap='jet', title=idd)
 
                     # Lets save runs that perform well
-                    if mcc >= best_MAE:
+                    if sdt.AUC >= best_MAE:
 
                         # Save the checkpoint
                         print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
@@ -171,10 +172,10 @@ def test():
                         saver.save(mon_sess, checkpoint_file)
 
                         # Save a new best MAE
-                        best_MAE = mcc
+                        best_MAE = sdt.AUC
                         best_epoch = Epoch
 
-                        if FLAGS.gif:
+                        if FLAGS.gifs:
 
                             # Delete prior screenshots
                             if tf.gfile.Exists('testing/' + FLAGS.RunInfo + 'Screenshots/'):

@@ -36,108 +36,76 @@ def forward_pass_unet(images, phase_train):
     K = 4
     images = tf.expand_dims(images, -1)
 
-    # Network blocks
-    conv1 = sdn.convolution('Conv1', images, 3, K, 1, phase_train=phase_train)
-    down = sdn.convolution('Down128', conv1, 2, K*2, 2, phase_train=phase_train)
+    # Network blocks, "s_" Prefix is for segmentation only weights
+    conv1 = sdn.convolution('s_Conv1', images, 3, K, 1, phase_train=phase_train)
+    down = sdn.convolution('s_Down128', conv1, 2, K*2, 2, phase_train=phase_train)
 
-    conv2 = sdn.convolution('Conv2', down, 3, K*2, 1, phase_train=phase_train)
-    conv2 = sdn.residual_layer('Conv2b', conv2, 3, K*2, 1, phase_train=phase_train)
-    down = sdn.convolution('Down64', conv2, 2, K*4, 2, phase_train=phase_train)
+    conv2 = sdn.convolution('s_Conv2', down, 3, K*2, 1, phase_train=phase_train)
+    conv2 = sdn.residual_layer('s_Conv2b', conv2, 3, K*2, 1, phase_train=phase_train)
+    down = sdn.convolution('s_Down64', conv2, 2, K*4, 2, phase_train=phase_train)
 
-    conv3 = sdn.residual_layer('Conv3', down, 3, K*4, 1, phase_train=phase_train)
-    conv3 = sdn.residual_layer('Conv3b', conv3, 3, K*4, 1, phase_train=phase_train)
-    down = sdn.convolution('Down32', conv3, 2, K*8, 2, phase_train=phase_train) # Now 32x32
+    conv3 = sdn.residual_layer('s_Conv3', down, 3, K*4, 1, phase_train=phase_train)
+    conv3 = sdn.residual_layer('s_Conv3b', conv3, 3, K*4, 1, phase_train=phase_train)
+    down = sdn.convolution('s_Down32', conv3, 2, K*8, 2, phase_train=phase_train) # Now 32x32
 
-    conv4 = sdn.residual_layer('Conv4', down, 3, K*8, 1, phase_train=phase_train)
-    conv4 = sdn.residual_layer('Conv4b', conv4, 3, K*8, 1, phase_train=phase_train)
-    down = sdn.convolution('Down16', conv4, 2, K*16, 2, phase_train=phase_train)
+    conv4 = sdn.residual_layer('s_Conv4', down, 3, K*8, 1, phase_train=phase_train)
+    conv4 = sdn.residual_layer('s_Conv4b', conv4, 3, K*8, 1, phase_train=phase_train)
+    down = sdn.convolution('s_Down16', conv4, 2, K*16, 2, phase_train=phase_train)
 
-    conv5 = sdn.inception_layer('Conv5', down, K*16, 1, phase_train=phase_train)
-    conv5 = sdn.inception_layer('Conv5b', conv5, K*16, 1, phase_train=phase_train)
-    down = sdn.convolution('Down8', conv5, 2, K*32, 2, phase_train=phase_train)
+    conv5 = sdn.inception_layer('s_Conv5', down, K*16, 1, phase_train=phase_train)
+    conv5 = sdn.inception_layer('s_Conv5b', conv5, K*16, 1, phase_train=phase_train)
+    down = sdn.convolution('s_Down8', conv5, 2, K*32, 2, phase_train=phase_train)
 
-    conv6 = sdn.inception_layer('Conv6', down, K*32, phase_train=phase_train)
-    conv6 = sdn.inception_layer('Conv6b', conv6, K*32, phase_train=phase_train)
-    down = sdn.convolution('Down4', conv6, 2, K*64, 2, phase_train=phase_train)
+    conv6 = sdn.inception_layer('s_Conv6', down, K*32, phase_train=phase_train)
+    conv6 = sdn.inception_layer('s_Conv6b', conv6, K*32, phase_train=phase_train)
+    down = sdn.convolution('s_Down4', conv6, 2, K*64, 2, phase_train=phase_train)
 
     # Bottom of the decoder: 4x4
-    conv7 = sdn.inception_layer('Bottom1', down, K*64, phase_train=phase_train)
-    conv7 = sdn.residual_layer('Bottom2', conv7, 3, K*64, 1, dropout=FLAGS.dropout_factor, phase_train=phase_train)
-    conv7 = sdn.inception_layer('Bottom2', conv7, K*64, phase_train=phase_train)
+    conv7 = sdn.inception_layer('s_Bottom1', down, K*64, phase_train=phase_train)
+    conv7 = sdn.residual_layer('s_Bottom2', conv7, 3, K*64, 1, dropout=FLAGS.dropout_factor, phase_train=phase_train)
+    conv7 = sdn.inception_layer('s_Bottom2', conv7, K*64, phase_train=phase_train)
 
     # Upsample 1
-    dconv = sdn.deconvolution('Dconv1', conv7, 2, K*32, S=2, phase_train=phase_train, concat=False, concat_var=conv6, out_shape=[FLAGS.batch_size, 8, 8, K*32])
-    dconv = sdn.inception_layer('Dconv1b', dconv, K*32, phase_train=phase_train)
+    dconv = sdn.deconvolution('s_Dconv1', conv7, 2, K*32, S=2, phase_train=phase_train, concat=False, concat_var=conv6, out_shape=[FLAGS.batch_size, 8, 8, K*32])
+    dconv = sdn.inception_layer('s_Dconv1b', dconv, K*32, phase_train=phase_train)
 
-    dconv = sdn.deconvolution('Dconv2', dconv, 2, K*16, S=2, phase_train=phase_train, concat=False, concat_var=conv5, out_shape=[FLAGS.batch_size, 16, 16, K*16])
-    dconv = sdn.inception_layer('Dconv2b', dconv, K*16, phase_train=phase_train)
+    dconv = sdn.deconvolution('s_Dconv2', dconv, 2, K*16, S=2, phase_train=phase_train, concat=False, concat_var=conv5, out_shape=[FLAGS.batch_size, 16, 16, K*16])
+    dconv = sdn.inception_layer('s_Dconv2b', dconv, K*16, phase_train=phase_train)
 
-    dconv = sdn.deconvolution('Dconv3', dconv, 2, K*8, S=2, phase_train=phase_train, concat=False, concat_var=conv4, out_shape=[FLAGS.batch_size, 32, 32, K*8])
-    dconv = sdn.inception_layer('Dconv3b', dconv, K*8, phase_train=phase_train)
+    dconv = sdn.deconvolution('s_Dconv3', dconv, 2, K*8, S=2, phase_train=phase_train, concat=False, concat_var=conv4, out_shape=[FLAGS.batch_size, 32, 32, K*8])
+    dconv = sdn.inception_layer('s_Dconv3b', dconv, K*8, phase_train=phase_train)
 
-    dconv = sdn.deconvolution('Dconv4', dconv, 2, K*4, S=2, phase_train=phase_train, concat=False, concat_var=conv3, out_shape=[FLAGS.batch_size, 64, 64, K*4])
-    dconv = sdn.residual_layer('Dconv4b', dconv, 3, K*4, S=1, phase_train=phase_train)
+    dconv = sdn.deconvolution('s_Dconv4', dconv, 2, K*4, S=2, phase_train=phase_train, concat=False, concat_var=conv3, out_shape=[FLAGS.batch_size, 64, 64, K*4])
+    dconv = sdn.residual_layer('s_Dconv4b', dconv, 3, K*4, S=1, phase_train=phase_train)
 
-    dconv = sdn.deconvolution('Dconv5', dconv, 2, K*2, S=2, phase_train=phase_train, concat=False, concat_var=conv2, out_shape=[FLAGS.batch_size, 128, 128, K*2])
-    dconv = sdn.residual_layer('Dconv5b', dconv, 3, K*2, S=1, phase_train=phase_train)
+    dconv = sdn.deconvolution('s_Dconv5', dconv, 2, K*2, S=2, phase_train=phase_train, concat=False, concat_var=conv2, out_shape=[FLAGS.batch_size, 128, 128, K*2])
+    dconv = sdn.residual_layer('s_Dconv5b', dconv, 3, K*2, S=1, phase_train=phase_train)
 
-    dconv = sdn.deconvolution('Dconv6', dconv, 2, K, S=2, phase_train=phase_train, concat=False, concat_var=conv1, out_shape=[FLAGS.batch_size, 256, 256, K])
-    dconv = sdn.convolution('Dconv6b', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
-
-    # Output is a 1x1 box with 3 labels
-    Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False)
-
-    # Retreive the weights collection
-    weights = tf.get_collection('weights')
-
-    # Sum the losses
-    L2_loss = tf.multiply(tf.add_n([tf.nn.l2_loss(v) for v in weights]), FLAGS.l2_gamma)
-
-    # Add it to the collection
-    tf.add_to_collection('losses', L2_loss)
-
-    # Activation summary
-    tf.summary.scalar('L2_Loss', L2_loss)
-
-    return Logits, L2_loss
-
-
-def forward_pass_class(images, phase_train):
+    dconv = sdn.deconvolution('s_Dconv6', dconv, 2, K, S=2, phase_train=phase_train, concat=False, concat_var=conv1, out_shape=[FLAGS.batch_size, 256, 256, K])
+    dconv = sdn.convolution('s_Dconv6b', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
 
     """
-    This function builds the network architecture and performs the forward pass
-    Two main architectures depending on where to insert the inception or residual layer
-    :param images: Images to analyze
-    :param phase_train1: bool, whether this is the training phase or testing phase
-    :return: logits: the predicted age from the network
-    :return: l2: the value of the l2 loss
+    Perform extra convolutions to smooth out the predicted maps
+    """
+    dconv = sdn.residual_layer('s_Smooth1', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
+    dconv = sdn.convolution('s_Smooth2', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
+    dconv = sdn.residual_layer('s_Smooth3', dconv, 3, K, S=1, phase_train=phase_train, dropout=FLAGS.dropout_factor)
+    Logits_seg = sdn.convolution('s_Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False,
+                                 relu=False, bias=False)
+
+    """
+    Here perform the classifier branch
+    "c_" Prefix is for classification only weights
     """
 
-    K = 16
+    conv = sdn.residual_layer('c_Classifier1', conv7, 3, K*64, 1, phase_train=phase_train)
+    conv = sdn.residual_layer('c_Classifier2', conv, 3, K * 64, 1, phase_train=phase_train)
+    conv = sdn.residual_layer('c_Classifier3', conv, 3, K * 64, 1, phase_train=phase_train)
+    fc = sdn.fc7_layer('c_FC', conv, 16, True, phase_train, FLAGS.dropout_factor, BN=True)
+    fc = sdn.linear_layer('c_Linear', fc, 8, False, phase_train, BN=True)
+    Logits_class = sdn.linear_layer('c_Logits', fc, FLAGS.num_classes, False, phase_train, BN=False, relu=False, add_bias=False)
 
-    # First layer is conv
-    print('Input Images: ', images)
-
-    # Residual blocks
-    conv = sdn.convolution('Conv1', images, 3, K, 2, phase_train=phase_train) # 128
-    conv = sdn.residual_layer('Residual1', conv, 3, K * 2, 2, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual2', conv, 3, K * 4, 2, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual3', conv, 3, K * 8, 2, phase_train=phase_train)  # 16x16
-    conv = sdn.residual_layer('Residual4', conv, 3, K * 8, 1, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual5', conv, 3, K * 16, 2, phase_train=phase_train)
-    conv = sdn.inception_layer('Inception6', conv, K * 16, S=1, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual7', conv, 3, K * 32, 2, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual8', conv, 3, K * 32, 1, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual9', conv, 3, K * 32, 1, phase_train=phase_train)
-
-    print('End Dims', conv)
-
-    # Linear layers
-    fc = sdn.fc7_layer('FC', conv, 16, True, phase_train, FLAGS.dropout_factor, BN=True)
-    fc = sdn.linear_layer('Linear', fc, 8, False, phase_train, BN=True)
-    Logits = sdn.linear_layer('Output', fc, FLAGS.num_classes, False, phase_train, BN=False, relu=False, add_bias=False)
-
-    return Logits, sdn.calc_L2_Loss(FLAGS.l2_gamma)
+    return Logits_class, Logits_seg, sdn.calc_L2_Loss(FLAGS.l2_gamma)
 
 
 def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
@@ -150,8 +118,12 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
     :return:
     """
 
+    """
+    1st calculate the segmentation loss
+    """
+
     # reduce dimensionality
-    labels, logits = tf.squeeze(labels_tmp), tf.squeeze(logits_tmp)
+    labels, logits = tf.squeeze(labels_tmp[1]), tf.squeeze(logits_tmp[1])
 
     # Generate the mask
     mask = tf.expand_dims(tf.cast(labels > 0, tf.float32), -1)
@@ -168,11 +140,6 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
     # Make labels one hot
     labels = tf.cast(tf.one_hot(labels, depth=FLAGS.num_classes, dtype=tf.uint8), tf.float32)
 
-    # # Flatten
-    # logits = tf.reshape(logits, [-1, FLAGS.num_classes])
-    # labels = tf.cast(tf.reshape(labels, [-1, FLAGS.num_classes]), tf.float32)
-    # mask = tf.cast(tf.reshape(mask, [-1]), tf.float32)
-
     if loss_type == 'DICE':
 
         # Get the generalized DICE loss
@@ -181,11 +148,8 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
         # Apply mask
         loss = tf.multiply(loss, mask)
 
-        # Display loss landscape
-        tf.summary.image('Loss_Landscape', tf.reshape(loss[im_num], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-
         loss = tf.reduce_mean(loss)
-        tf.summary.scalar('Dice_Loss', loss)
+        tf.summary.scalar('Dice_Loss', loss, family='Losses')
 
     elif loss_type == 'WASS_DICE':
 
@@ -195,12 +159,8 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
         # Apply mask
         loss = tf.multiply(loss, mask)
 
-        # Display loss landscape
-        tf.summary.image('Loss_Landscape1', tf.reshape(loss[im_num, :, :, 1], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-        tf.summary.image('Loss_Landscape0', tf.reshape(loss[im_num, :, :, 0], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-
         loss = tf.reduce_mean(loss)
-        tf.summary.scalar('WassersteinDice Loss', loss)
+        tf.summary.scalar('WassersteinDice Loss', loss, family='Losses')
 
     elif loss_type == 'WCE':
 
@@ -210,12 +170,8 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
         # Apply mask
         loss = tf.multiply(loss, mask)
 
-        # Display loss landscape
-        tf.summary.image('Loss_Landscape1', tf.reshape(loss[im_num, :, :, 1], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-        tf.summary.image('Loss_Landscape0', tf.reshape(loss[im_num, :, :, 0], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
-
         loss = tf.reduce_mean(loss)
-        tf.summary.scalar('Cross_Entropy_Loss', loss)
+        tf.summary.scalar('Cross_Entropy_Loss', loss, family='Losses')
 
     else:
 
@@ -233,16 +189,36 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
         loss = wce*1 + dice*10
 
         # Output the summary of the MSE and MAE
-        tf.summary.scalar('Cross_Entropy_Loss', wce)
-        tf.summary.scalar('Dice_Loss', dice)
+        tf.summary.scalar('Cross_Entropy_Loss', wce, family='Losses')
+        tf.summary.scalar('Dice_Loss', dice, family='Losses')
+
+    """
+    Now calculate the classification loss
+    """
+
+    # Change labels to one hot
+    labels_c = tf.one_hot(tf.cast(labels_tmp[0], tf.uint8), depth=FLAGS.num_classes, dtype=tf.uint8)
+    logits_c = logits_tmp[0]
+
+    # Calculate  loss
+    class_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.squeeze(labels_c), logits=logits_c)
+
+    # Reduce to scalar
+    class_loss = tf.reduce_mean(class_loss)
+
+    # Output the summary of the MSE and MAE
+    tf.summary.scalar('Classification_Loss', class_loss, family='Losses')
 
     # Total loss
-    tf.summary.scalar('Total_loss', loss)
+    summed_loss = FLAGS.seg_factor*loss + class_loss
+    tf.summary.scalar('Total_loss', summed_loss, family='Losses')
 
     # Add these losses to the collection
     tf.add_to_collection('losses', loss)
+    tf.add_to_collection('losses', class_loss)
+    tf.add_to_collection('losses', summed_loss)
 
-    return loss
+    return [summed_loss, class_loss, loss]
 
 
 def backward_pass(total_loss):
@@ -267,14 +243,24 @@ def backward_pass(total_loss):
     opt = tf.contrib.opt.NadamOptimizer(learning_rate=lr_decayed, beta1=FLAGS.beta1,
                                         beta2=FLAGS.beta2, epsilon=0.1)
 
-    # Compute the gradients
-    gradients = opt.compute_gradients(total_loss)
+    # Retreive the different sets of variables we will train at any one time
+    all_vars = tf.trainable_variables()
+    s_vars, c_vars = [var for var in all_vars if 's_' in var.name], [var for var in all_vars if 'c_' in var.name]
 
-    # clip the gradients
-    #gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients]
+    # Different train functions
+    def train_seg():
+        gradients = opt.compute_gradients(total_loss, var_list=s_vars)
+        return opt.apply_gradients(gradients, global_step, name='train_segs')
 
-    # Apply the gradients
-    train_op = opt.apply_gradients(gradients, global_step, name='train')
+    def train_all():
+        gradients = opt.compute_gradients(total_loss)
+        return opt.apply_gradients(gradients, global_step, name='train_all')
+
+    # Compute the gradients. Train segmenter weights first then both
+    class_start_steps = int((FLAGS.epoch_size / FLAGS.batch_size) * FLAGS.epoch_class)
+    train_op = tf.cond(global_step > class_start_steps,
+                        lambda: train_all(),
+                        lambda: train_seg())
 
     # Add histograms for the trainable variables. i.e. the collection of variables created with Trainable=True
     for var in tf.trainable_variables():
