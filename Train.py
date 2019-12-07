@@ -9,8 +9,7 @@ import tensorflow as tf
 FLAGS = tf.app.flags.FLAGS
 
 # Define some of the data variables
-tf.app.flags.DEFINE_string('data_dir', 'data/', """Path to the data directory.""")
-tf.app.flags.DEFINE_string('test_files', 'RISK_3', """Testing files""")
+tf.app.flags.DEFINE_string('data_dir', 'data/train/', """Path to the data directory.""")
 tf.app.flags.DEFINE_integer('num_classes', 2, """Number of classes""")
 tf.app.flags.DEFINE_integer('box_dims', 1024, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
@@ -40,7 +39,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
 tf.app.flags.DEFINE_string('RunInfo', 'Branch2/', """Unique file name for this training run""")
-tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
+tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 def train():
 
@@ -128,6 +127,12 @@ def train():
                 # Run and time an iteration
                 start = time.time()
                 mon_sess.run(train_op, feed_dict={phase_train: True})
+                timer += (time.time() - start)
+
+                # Run and time an iteration
+                start = time.time()
+                try: mon_sess.run(train_op, feed_dict={phase_train: True})
+                except tf.errors.OutOfRangeError: mon_sess.run(iterator.initializer)
                 timer += (time.time() - start)
 
                 # Calculate current epoch

@@ -24,15 +24,14 @@ tf.app.flags.DEFINE_integer('epoch_size', 370, """Batch 1""")
 tf.app.flags.DEFINE_integer('batch_size', 370, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'Branch/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Branch2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
-tf.app.flags.DEFINE_string('test_files', 'RISK_3', """Testing files""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 tf.app.flags.DEFINE_integer('gifs', 0, """ save gifs or not""")
 
 # Define some of the immutable variables
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('data_dir', 'data/', """Path to the data directory.""")
+tf.app.flags.DEFINE_string('data_dir', 'data/test/', """Path to the data directory.""")
 tf.app.flags.DEFINE_integer('num_classes', 2, """ Number of classes""")
 tf.app.flags.DEFINE_integer('box_dims', 1024, """dimensions of the input pictures""")
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
