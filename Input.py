@@ -429,21 +429,21 @@ def load_protobuf(training=True):
 
     # Define filenames
     if training:
-        num_files = len(sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir))
+        filenames = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
         files = tf.data.Dataset.list_files(os.path.join(FLAGS.data_dir, '*.tfrecords'))
-        dataset = files.interleave(tf.data.TFRecordDataset, cycle_length=num_files,
+        dataset = files.interleave(tf.data.TFRecordDataset, cycle_length=len(filenames),
                                    num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        print('******** Loading Files: ', filenames)
     else:
         files = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
         dataset = tf.data.TFRecordDataset(files, num_parallel_reads=1)
-
-    print('******** Loading Files: ', files)
+        print('******** Loading Files: ', files)
 
     # Shuffle and repeat if training phase
     if training:
 
         # Buffer size only effect randomness of shuffle not samples used. Pick epoch size to be perfect or 10k
-        dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size)
+        dataset = dataset.shuffle(buffer_size=1000)
         # Repeat duplicates the dataset x times
         dataset = dataset.repeat(2)
 

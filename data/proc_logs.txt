@@ -37,12 +37,19 @@ Saving segregated tfrecords... 362 in data/RISK_1 [306, 56]
 Saving segregated tfrecords... 372 in data/RISK_2 [319, 53]
 Saving segregated tfrecords... 370 in data/RISK_3 [322, 48]
 
-Saving segregated tfrecords... 171 in data/BRCA_0
-Saving segregated tfrecords... 159 in data/BRCA_1
-Saving segregated tfrecords... 156 in data/BRCA_2
-Saving segregated tfrecords... 200 in data/BRCA_3
+Made 686 BRCA boxes from 686 BRCA patients [396, 290]
+Saving segregated tfrecords... 162 in data/BRCA_0
+Saving segregated tfrecords... 161 in data/BRCA_1
+Saving segregated tfrecords... 185 in data/BRCA_2
+Saving segregated tfrecords... 178 in data/BRCA_3
 
-Total:2566
+Made 4061 Chemoprevention boxes from 4061 patients
+Saving segregated tfrecords... 1008 in data/PREV_0
+Saving segregated tfrecords... 1029 in data/PREV_1
+Saving segregated tfrecords... 1001 in data/PREV_2
+Saving segregated tfrecords... 1023 in data/PREV_3
+
+Total:6627
 
 
 

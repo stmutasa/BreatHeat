@@ -146,17 +146,17 @@ def test():
                     sdt.retreive_metrics_classification(Epoch, True)
 
                     # TODO: Testing:
-                    mask = np.squeeze(examples['label_data']>0).astype(np.bool)
+                    mask = np.squeeze(examples['label_data'] > 0).astype(np.bool)
                     heatmap_high = y_pred[..., 1]
                     heatmap_low = y_pred[..., 0]
-                    for z in range (200, 215):
+                    for z in range(200, 215):
                         high_mean = ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean()
                         low_mean = ma.masked_array(heatmap_low[z].flatten(), mask=~mask[z].flatten()).mean()
-                        idd = ('High: %.3f Low: %.3f %s' %(high_mean, low_mean, examples['patient'][z]))
-                        print (idd)
-                    #     sdd.display_single_image(heatmap_low[z], False, cmap='jet', title='L_' + idd)
-                    #     sdd.display_single_image(heatmap_high[z], False, title='H_' + idd)
-                    # sdd.display_single_image(mask[0], cmap='jet', title=idd)
+                        idd = ('High: %.3f Low: %.3f %s' % (high_mean, low_mean, examples['patient'][z]))
+                        print(idd)
+                        sdd.display_single_image(heatmap_low[z], False, cmap='jet', title='L_' + idd)
+                        sdd.display_single_image(heatmap_high[z], False, title='H_' + idd)
+                    sdd.display_single_image(mask[0], cmap='jet', title=idd)
 
                     # Lets save runs that perform well
                     if sdt.AUC >= best_MAE:
@@ -165,7 +165,8 @@ def test():
                         print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
 
                         # Define the filenames
-                        checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo, ('Epoch_%s_DICE_%0.3f' % (Epoch, sdt.AUC)))
+                        checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo,
+                                                       ('Epoch_%s_DICE_%0.3f' % (Epoch, sdt.AUC)))
 
                         # Save the checkpoint
                         saver.save(mon_sess, checkpoint_file)

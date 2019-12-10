@@ -16,11 +16,11 @@ tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the 
 tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification """)
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_epochs', 276, """Number of epochs to run""")
-tf.app.flags.DEFINE_integer('epoch_size', 2200, """How many examples""")
+tf.app.flags.DEFINE_integer('num_epochs', 300, """Number of epochs to run""")
+tf.app.flags.DEFINE_integer('epoch_size', 6257, """How many examples""")
 tf.app.flags.DEFINE_integer('print_interval', 10, """How often to print a summary to console during training""")
 tf.app.flags.DEFINE_integer('checkpoint_interval', 25, """How many Epochs to wait before saving a checkpoint""")
-tf.app.flags.DEFINE_integer('batch_size', 16, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('batch_size', 8, """Number of images to process in a batch.""")
 
 # Hyperparameters:
 tf.app.flags.DEFINE_float('dropout_factor', 0.5, """ Keep probability""")
@@ -126,11 +126,6 @@ def train():
 
                 # Run and time an iteration
                 start = time.time()
-                mon_sess.run(train_op, feed_dict={phase_train: True})
-                timer += (time.time() - start)
-
-                # Run and time an iteration
-                start = time.time()
                 try: mon_sess.run(train_op, feed_dict={phase_train: True})
                 except tf.errors.OutOfRangeError: mon_sess.run(iterator.initializer)
                 timer += (time.time() - start)
@@ -142,10 +137,14 @@ def train():
                 if i % print_interval == 0:
 
                     # Load some metrics
-                    lbl1, Losses = mon_sess.run([labels, losses], feed_dict={phase_train: True})
+                    try:
+                        lbl1, Losses = mon_sess.run([labels, losses], feed_dict={phase_train: True})
+                    except tf.errors.OutOfRangeError:
+                        mon_sess.run(iterator.initializer)
+                        lbl1, Losses = mon_sess.run([labels, losses], feed_dict={phase_train: True})
 
                     # Make losses display in ppm
-                    Losses = [x*1e3 for x in Losses]
+                    Losses = [x * 1e3 for x in Losses]
                     # Get timing stats
                     elapsed = timer / print_interval
                     timer = 0
@@ -162,7 +161,11 @@ def train():
                           % (Epoch, FLAGS.batch_size / elapsed, Losses))
 
                     # Run a session to retrieve our summaries
-                    summary = mon_sess.run(all_summaries, feed_dict={phase_train: True})
+                    try:
+                        summary = mon_sess.run(all_summaries, feed_dict={phase_train: True})
+                    except tf.errors.OutOfRangeError:
+                        mon_sess.run(iterator.initializer)
+                        summary = mon_sess.run(all_summaries, feed_dict={phase_train: True})
 
                     # Add the summaries to the protobuf for Tensorboard
                     summary_writer.add_summary(summary, i)
