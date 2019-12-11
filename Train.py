@@ -17,8 +17,8 @@ tf.app.flags.DEFINE_integer('net_type', 1, """ 0=Segmentation, 1=classification 
 
 # Define some of the immutable variables
 tf.app.flags.DEFINE_integer('num_epochs', 300, """Number of epochs to run""")
-tf.app.flags.DEFINE_integer('epoch_size', 6257, """How many examples""")
-tf.app.flags.DEFINE_integer('print_interval', 10, """How often to print a summary to console during training""")
+tf.app.flags.DEFINE_integer('epoch_size', 2200, """How many examples""")
+tf.app.flags.DEFINE_integer('print_interval', 1, """How often to print a summary to console during training""")
 tf.app.flags.DEFINE_integer('checkpoint_interval', 25, """How many Epochs to wait before saving a checkpoint""")
 tf.app.flags.DEFINE_integer('batch_size', 8, """Number of images to process in a batch.""")
 
@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Branch2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Redist_recalc/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 def train():
@@ -138,10 +138,10 @@ def train():
 
                     # Load some metrics
                     try:
-                        lbl1, Losses = mon_sess.run([labels, losses], feed_dict={phase_train: True})
+                        lbl1, Losses, exs = mon_sess.run([labels, losses, data], feed_dict={phase_train: True})
                     except tf.errors.OutOfRangeError:
                         mon_sess.run(iterator.initializer)
-                        lbl1, Losses = mon_sess.run([labels, losses], feed_dict={phase_train: True})
+                        lbl1, Losses, exs = mon_sess.run([labels, losses, data], feed_dict={phase_train: True})
 
                     # Make losses display in ppm
                     Losses = [x * 1e3 for x in Losses]
@@ -159,6 +159,7 @@ def train():
                     print('-' * 70)
                     print('Epoch %d, (%.1f eg/s), Losses [Total, Class, Seg, L2]: %s'
                           % (Epoch, FLAGS.batch_size / elapsed, Losses))
+                    print('Randoms:\n%s\n%s\n%s' % (exs['id'], exs['mode'], exs['angle']))
 
                     # Run a session to retrieve our summaries
                     try:

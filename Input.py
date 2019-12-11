@@ -27,7 +27,7 @@ RiskStudy:
 	(201*2) RiskStudy/HighRisk/Cancer/4/imgxx.dcm (2 views each pt.)
 	(Low risk is low risk with no cancer)
 	(High Risk / Normal didnt get cancer)
-	TODO: Make high risk if they got cancer (unclear how high risk grp determined)
+	TODO: Make high risk if in high risk group
 """
 
 import subprocess
@@ -186,12 +186,14 @@ def pre_process_RISK(box_dims=1024):
         patient = file.split('/')[-4] + '_' +  file.split('/')[-3] + '_' + file.split('/')[-2]
         view = patient + '_' + file.split('/')[-1].split('.')[0][-1]
 
-        if 'Cancer' in file: cancer = 1
+        if 'HighRisk' in file:
+            cancer = 1
         else: cancer = 0
 
         # Load and resize image
         try:
-            image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
+            image, accno, _, _, _ = sdl.load_DICOM_2D(file)
+            shape = image.shape
         except:
             print("Failed to load: ", file)
             continue
@@ -422,12 +424,22 @@ def pre_process_PREV(box_dims=1024):
 
 # Load the protobuf
 def load_protobuf(training=True):
-
     """
-    Loads the protocol buffer into a form to send to shuffle
+    Loads the protocol buffer into a form to send to shuffle. To oversample classes we made some mods...
+    Load with parallel interleave -> Prefetch -> Large Shuffle -> Parse labels -> Undersample map -> Flat Map
+    -> Prefetch -> Oversample Map -> Flat Map -> Small shuffle -> Prefetch -> Parse images -> Augment -> Prefetch -> Batch
     """
 
-    # Define filenames
+    # Lambda functions for retreiving our protobuf
+    _parse_labels = lambda dataset: sdl.load_tfrecord_labels(dataset, segments='label_data')
+    _parse_images = lambda dataset: sdl.load_tfrecord_images(dataset, [FLAGS.box_dims, FLAGS.box_dims], tf.float32,
+                                                             segments='label_data', segments_dtype=tf.uint8,
+                                                             segments_shape=[FLAGS.box_dims, FLAGS.box_dims])
+    _parse_all = lambda dataset: sdl.load_tfrecords(dataset, [FLAGS.box_dims, FLAGS.box_dims], tf.float32,
+                                                    segments='label_data', segments_dtype=tf.uint8,
+                                                    segments_shape=[FLAGS.box_dims, FLAGS.box_dims])
+
+    # Load tfrecords with parallel interleave if training
     if training:
         filenames = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
         files = tf.data.Dataset.list_files(os.path.join(FLAGS.data_dir, '*.tfrecords'))
@@ -439,39 +451,41 @@ def load_protobuf(training=True):
         dataset = tf.data.TFRecordDataset(files, num_parallel_reads=1)
         print('******** Loading Files: ', files)
 
-    # Shuffle and repeat if training phase
+    # Training phase transformations
     if training:
 
-        # Buffer size only effect randomness of shuffle not samples used. Pick epoch size to be perfect or 10k
-        dataset = dataset.shuffle(buffer_size=1000)
-        # Repeat duplicates the dataset x times
-        dataset = dataset.repeat(2)
+        # Define our undersample and oversample filtering functions
+        _filter_fn = lambda x: sdl.undersample_filter(x['cancer'], actual_dists=[0.566, 0.4341], desired_dists=[.5, .5])
+        _undersample_filter = lambda x: dataset.filter(_filter_fn)
+        _oversample_filter = lambda x: tf.data.Dataset.from_tensors(x).repeat(
+            sdl.oversample_class(x['cancer'], actual_dists=[0.566, 0.4341], desired_dists=[.5, .5]))
 
-    """
-        Functions to map the dataset
-        - Define the first map function, can just use lambda instead in the map call
-        - Parse the tfrecord into tensors
-        - Fuse the mapping and batching
-        - Map the data set with preprocessing steps
-        """
+        # Large shuffle, repeat for 100 epochs then parse the labels only
+        dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size)
+        dataset = dataset.repeat(100)
+        dataset = dataset.map(_parse_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    _parse_function = lambda dataset: sdl.load_tfrecords(dataset, [FLAGS.box_dims, FLAGS.box_dims], tf.float32,
-                           segments='label_data', segments_dtype=tf.uint8, segments_shape=[FLAGS.box_dims, FLAGS.box_dims])
-    dataset = dataset.map(_parse_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        # Now we have the labels, undersample then oversample.
+        # Map allows us to do it in parallel and flat_map's identity function merges the survivors
+        dataset = dataset.map(_undersample_filter, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        dataset = dataset.flat_map(lambda x: x)
+        dataset = dataset.map(_oversample_filter, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        dataset = dataset.flat_map(lambda x: x)
+
+        # Now perform a small shuffle in case we duplicated neighbors, then prefetch before the final map
+        dataset = dataset.shuffle(buffer_size=FLAGS.batch_size * 2)
+        dataset = dataset.map(_parse_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+    else:
+        dataset = dataset.map(_parse_all, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+    # Now do the common pathway
     scope = 'data_augmentation' if training else 'input'
-    with tf.name_scope(scope): dataset = dataset.map(DataPreprocessor(training), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    with tf.name_scope(scope):
+        dataset = dataset.map(DataPreprocessor(training), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    """
-        - If the user-defined function passed into the map transformation is expensive,
-            apply the cache transformation after the map transformation as long as the resulting dataset
-            can still fit into memory or local storage.
-        - Batch the dataset and drop remainder. Can try batch before map if map is small
-        - Prefetch batches to start preprocessing the next batch before the training step is done
-        """
-
-    # dataset = dataset.cache()
-    dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True)
-    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    # Batch and prefetch
+    dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
 
     # Make an initializable iterator
     iterator = dataset.make_initializable_iterator()
@@ -503,6 +517,7 @@ class DataPreprocessor(object):
         angle = tf.random_uniform([], -0.45, 0.45)
         data['data'] = tf.contrib.image.rotate(data['data'], angle, interpolation='BILINEAR')
         data['label_data'] = tf.contrib.image.rotate(data['label_data'], angle, interpolation='NEAREST')
+        data['angle'] = angle
 
         # Random shear:
         # rand = []
@@ -529,8 +544,10 @@ class DataPreprocessor(object):
             return img, lbl
 
         # Maxval is not included in the range
-        data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random.uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(1), lambda: flip(0))
-        data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random.uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(2), lambda: flip(0))
+        flip_mode = tf.random.uniform([], 0, 2, tf.int32)
+        data['mode'] = flip_mode
+        data['data'], data['label_data'] = tf.cond(flip_mode > 0, lambda: flip(1), lambda: flip(0))
+        data['data'], data['label_data'] = tf.cond(flip_mode > 0, lambda: flip(2), lambda: flip(0))
 
         # Random contrast and brightness
         data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
@@ -539,6 +556,7 @@ class DataPreprocessor(object):
         # Random gaussian noise
         T_noise = tf.random.uniform([], 0, 0.1)
         noise = tf.random.uniform(shape=[FLAGS.network_dims, FLAGS.network_dims, 1], minval=-T_noise, maxval=T_noise)
+        data['noise'] = T_noise
         data['data'] = tf.add(data['data'], tf.cast(noise, tf.float32))
 
 
