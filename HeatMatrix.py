@@ -307,6 +307,7 @@ def inputs(training=True, skip=True):
         Input.pre_process_BRCA(FLAGS.box_dims)
         Input.pre_process_RISK(FLAGS.box_dims)
         Input.pre_process_CALCS(FLAGS.box_dims)
+        Input.pre_process_PREV(FLAGS.box_dims)
 
     else:
         print('-------------------------Previously saved records found! Loading...')

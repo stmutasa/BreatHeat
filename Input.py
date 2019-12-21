@@ -42,6 +42,7 @@ home_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/'
 risk_dir = home_dir + 'RiskStudy/'
 brca_dir = home_dir + 'BRCA/'
 calc_dir = home_dir + 'Calcs/Eduardo/'
+chemo_dir = home_dir + 'Chemoprevention/'
 
 sdl = SDL.SODLoader(data_root=home_dir)
 sdd = SDD.SOD_Display()
@@ -310,16 +311,104 @@ def pre_process_CALCS(box_dims=1024):
         del image, mask, labels
 
     # Done with all patients
-    print ('Made %s CALCS boxes from %s patients' %(index, pt,))
+    print('Made %s CALCS boxes from %s patients' % (index, pt,))
 
     # Save the data. Saving with size 2 goes sequentially
     sdl.save_dict_filetypes(data[0])
     sdl.save_segregated_tfrecords(4, data, 'patient', 'data/CALCS')
 
 
+def pre_process_PREV(box_dims=1024):
+    """
+    Loads the chemoprevention
+    :param box_dims: dimensions of the saved images
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    filenames = sdl.retreive_filelist('dcm', True, chemo_dir)
+    shuffle(filenames)
+
+    # Include the baseline and follow up studies
+    filenames = [x for x in filenames if '#' not in x]
+
+    # Global variables
+    display, counter, data, index, pt = [], [0, 0], {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number
+        # Chemoprevention/Treated/Patient 2/L CC 5YR/xxx.dcm
+        We want: group = source of positive, brca vs risk 
+        Patient = similar to accession, (can have multiple views) (CALCSADH_19_YES)
+        View = unique to that view (CALCSADH_19_YES_CC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        group = 'PREV'
+        patient = 'PREV' + file.split('/')[-4] + '_' + file.split('/')[-3].split(' ')[1] + '_'
+        if '5YR' in file:
+            patient += '5YR'
+        else:
+            patient += 'BASE'
+        view = patient + '_' + file.split('/')[-2].replace(' ', '')[:3]
+
+        # All of these are technically cancer
+        cancer = 1
+
+        # Load and resize image
+        try:
+            image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
+        except:
+            print("Failed to load: ", file)
+            continue
+
+        """
+        We have two methods to generate breast masks, they fail on different examples. 
+        Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+        So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        image *= mask
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Save the data
+        data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': group, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s Chemoprevention boxes from %s patients' % (index, pt,))
+
+    # Save the data.
+    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/PREV')
+
+
 # Load the protobuf
 def load_protobuf(training=True):
-
     """
     Loads the protocol buffer into a form to send to shuffle
     """
@@ -337,13 +426,17 @@ def load_protobuf(training=True):
     # Create a dataset from the protobuf
     dataset = tf.data.TFRecordDataset(filenames)
 
+    # Repeat input indefinitely
+    dataset = dataset.repeat()
+
     # Shuffle the entire dataset then create a batch
-    if training: dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size//2)
+    if training: dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size)
 
     # Load the tfrecords into the dataset with the first map call
     _records_call = lambda dataset: \
         sdl.load_tfrecords(dataset, [FLAGS.box_dims, FLAGS.box_dims], tf.float32,
-                           segments='label_data', segments_dtype=tf.uint8, segments_shape=[FLAGS.box_dims, FLAGS.box_dims])
+                           segments='label_data', segments_dtype=tf.uint8,
+                           segments_shape=[FLAGS.box_dims, FLAGS.box_dims])
 
     # Parse the record into tensors
     dataset = dataset.map(_records_call, num_parallel_calls=tf.data.experimental.AUTOTUNE)
@@ -359,11 +452,7 @@ def load_protobuf(training=True):
     dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True)
 
     # cache and Prefetch
-    dataset = dataset.cache()
     dataset = dataset.prefetch(buffer_size=FLAGS.batch_size)
-
-    # Repeat input indefinitely
-    dataset = dataset.repeat()
 
     # Make an initializable iterator
     iterator = dataset.make_initializable_iterator()
@@ -421,8 +510,10 @@ class DataPreprocessor(object):
             return img, lbl
 
         # Maxval is not included in the range
-        data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random.uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(1), lambda: flip(0))
-        data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random.uniform([1], 0, 2, dtype=tf.int32)) > 0, lambda: flip(2), lambda: flip(0))
+        data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random.uniform([], 0, 2, dtype=tf.int32)) > 0,
+                                                   lambda: flip(1), lambda: flip(0))
+        data['data'], data['label_data'] = tf.cond(tf.squeeze(tf.random.uniform([], 0, 2, dtype=tf.int32)) > 0,
+                                                   lambda: flip(2), lambda: flip(0))
 
         # Random contrast and brightness
         # data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
