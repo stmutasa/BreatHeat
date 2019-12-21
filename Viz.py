@@ -26,6 +26,7 @@ tf.app.flags.DEFINE_integer('batch_size', 371, """Number of images to process in
 tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
+tf.app.flags.DEFINE_integer('gifs', 0, """ save gifs or not""")
 
 # Define some of the immutable variables
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
@@ -46,10 +47,9 @@ tf.app.flags.DEFINE_float('learning_rate', 1e-3, """Initial learning rate""")
 tf.app.flags.DEFINE_float('beta1', 0.9, """ The beta 1 value for the adam optimizer""")
 tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam optimizer""")
 
+
 # Define a custom training class
 def test():
-
-
     # Makes this the default graph where all ops will be added
     # with tf.Graph().as_default(), tf.device('/cpu:0'):
     with tf.Graph().as_default(), tf.device('/gpu:' + str(FLAGS.GPU)):
@@ -121,7 +121,6 @@ def test():
 
                 try:
                     while step < max_steps:
-
                         # Load some metrics for testing
                         _softmax_map, _data = mon_sess.run([softmax_map, data], feed_dict={phase_train: False})
 
@@ -133,14 +132,32 @@ def test():
 
                 finally:
 
+                    # TODO: Testing:
+                    cnt = [0, 0]
+                    for z in range(FLAGS.batch_size):
+                        it = int(_data['cancer'][z])
+                        cnt[it] += 1
+                    print('Counts: ', cnt)
+                    mask = np.squeeze(_data['label_data'])
+                    mask[mask > 1] = True
+                    heatmap = _softmax_map[..., 1]
+                    blank_heatmap = heatmap * mask
+                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
+                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
+                    # sdd.display_volume(blank_heatmap[30:45], True, cmap='jet')
+                    for z in range(200, 264):
+                        idd = _data['patient'][z]
+                        sdd.display_single_image(heatmap[z], False, cmap='jet', title=idd)
+                    sdd.display_single_image(heatmap[0], cmap='jet', title=idd)
+
                     # Testing
                     pred_map = sdt.return_binary_segmentation(_softmax_map, 0.5, 1, True)
-
-                    # TODO: Dummy MCC
-                    mcc = 0
+                    print('Epoch: %s, Best Epoch: %s (%.3f)' % (Epoch, best_epoch, best_MAE))
+                    dice, mcc = sdt.calculate_segmentation_metrics(pred_map, _data['label_data'])
 
                     # Lets save runs that perform well
                     if mcc >= best_MAE:
+
                         # Save the checkpoint
                         print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
 
@@ -155,6 +172,18 @@ def test():
                         best_MAE = mcc
                         best_epoch = Epoch
 
+                        if FLAGS.gif:
+
+                            # Delete prior screenshots
+                            if tf.gfile.Exists('testing/' + FLAGS.RunInfo + 'Screenshots/'):
+                                tf.gfile.DeleteRecursively('testing/' + FLAGS.RunInfo + 'Screenshots/')
+                            tf.gfile.MakeDirs('testing/' + FLAGS.RunInfo + 'Screenshots/')
+
+                            # Plot all images
+                            for i in range(FLAGS.batch_size):
+                                file = ('testing/' + FLAGS.RunInfo + 'Screenshots/' + 'test_%s.gif' % i)
+                                sdt.plot_img_and_mask3D(_data['data'][i], pred_map[i], _data['label_data'][i], file)
+
                     # Shut down the session
                     mon_sess.close()
 
@@ -162,7 +191,7 @@ def test():
             print('-' * 70)
 
             # Otherwise check folder for changes
-            filecheck = glob.glob(FLAGS.train_dir+FLAGS.RunInfo + '*')
+            filecheck = glob.glob(FLAGS.train_dir + FLAGS.RunInfo + '*')
             newfilec = filecheck
 
             # Sleep if no changes
@@ -171,7 +200,7 @@ def test():
                 time.sleep(5)
 
                 # Recheck the folder for changes
-                newfilec = glob.glob(FLAGS.train_dir+FLAGS.RunInfo + '*')
+                newfilec = glob.glob(FLAGS.train_dir + FLAGS.RunInfo + '*')
 
 
 def main(argv=None):  # pylint: disable=unused-argument
@@ -180,6 +209,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         tf.gfile.DeleteRecursively('testing/' + FLAGS.RunInfo)
     tf.gfile.MakeDirs('testing/' + FLAGS.RunInfo)
     test()
+
 
 if __name__ == '__main__':
     tf.app.run()

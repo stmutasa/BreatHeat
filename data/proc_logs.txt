@@ -27,22 +27,32 @@ Made 119 Treated ORIG boxes from 119 patients. Size: 119
 
 REDUX
 
+Made 404 CALCS boxes from 404 CALCS Patients (All positive)
 Saving segregated tfrecords... 101 in data/CALCS_0 
 Saving segregated tfrecords... 100 in data/CALCS_1
 Saving segregated tfrecords... 103 in data/CALCS_2
 Saving segregated tfrecords... 100 in data/CALCS_3
 
-Saving segregated tfrecords... 372 in data/RISK_0 [317, 53]
-Saving segregated tfrecords... 362 in data/RISK_1 [306, 56]
-Saving segregated tfrecords... 372 in data/RISK_2 [319, 53]
-Saving segregated tfrecords... 370 in data/RISK_3 [322, 48]
+Made 1476 RISK boxes from 1476 patients [1056, 420]
+Saving segregated tfrecords... 368 in data/RISK_0
+Saving segregated tfrecords... 366 in data/RISK_1
+Saving segregated tfrecords... 371 in data/RISK_2
+Saving segregated tfrecords... 371 in data/RISK_3
 
-Saving segregated tfrecords... 171 in data/BRCA_0
-Saving segregated tfrecords... 159 in data/BRCA_1
-Saving segregated tfrecords... 156 in data/BRCA_2
-Saving segregated tfrecords... 200 in data/BRCA_3
+Made 686 BRCA boxes from 686 BRCA patients [396, 290]
+Saving segregated tfrecords... 162 in data/BRCA_0
+Saving segregated tfrecords... 161 in data/BRCA_1
+Saving segregated tfrecords... 185 in data/BRCA_2
+Saving segregated tfrecords... 178 in data/BRCA_3
 
-Total:2566
+Made 4061 Chemoprevention boxes from 4061 patients (All Positive)
+Saving segregated tfrecords... 1008 in data/PREV_0
+Saving segregated tfrecords... 1029 in data/PREV_1
+Saving segregated tfrecords... 1001 in data/PREV_2
+Saving segregated tfrecords... 1023 in data/PREV_3
+
+Total:6627, 5175 pos, class probs [0.219, 0.781]
+w/o Chemoprev: Tot 2566, 1114 pos, 1452 Neg, class probs [0.566, 0.4341]
 
 
 

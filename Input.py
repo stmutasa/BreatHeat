@@ -5,10 +5,8 @@ Who are the patients who have cancer in our dataset: (1885 / 1824  no cancer vie
 
 BRCA:
 	(37*4 or 146) BRCA/G1_PosBRCA/Cancer/Patient 2/R CC/xxx.dcm (4 views each patient)
-	TODO: What breast gets the cancer? Are these pre-cancer scans
 
 Calcs:
-    TODO: Find out if there are CC and MLO views
     File 1 and File 2 contain CC and MLO views of the affected breast - These pts have cancer though
     The /new data does not contain full field mammograms - dammit man!
 	Invasive
@@ -24,8 +22,6 @@ RiskStudy:
 	(High Risk / Normal didnt get cancer)
 """
 
-import glob
-
 import numpy as np
 import tensorflow as tf
 import SODLoader as SDL
@@ -39,6 +35,7 @@ FLAGS = tf.app.flags.FLAGS
 
 # Define the data directory to use
 home_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/'
+
 risk_dir = home_dir + 'RiskStudy/'
 brca_dir = home_dir + 'BRCA/'
 calc_dir = home_dir + 'Calcs/Eduardo/'
@@ -414,16 +411,8 @@ def load_protobuf(training=True):
     """
 
     # Define filenames
-    if training:
-        all_files = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
-        filenames = [x for x in all_files if FLAGS.test_files not in x]
-    else:
-        all_files = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
-        filenames = [x for x in all_files if FLAGS.test_files in x]
-
+    filenames = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
     print('******** Loading Files: ', filenames)
-
-    # Create a dataset from the protobuf
     dataset = tf.data.TFRecordDataset(filenames)
 
     # Repeat input indefinitely
@@ -457,11 +446,8 @@ def load_protobuf(training=True):
     # Make an initializable iterator
     iterator = dataset.make_initializable_iterator()
 
-    # Retreive the batch
-    examples = iterator.get_next()
-
     # Return data as a dictionary
-    return examples, iterator
+    return iterator
 
 
 class DataPreprocessor(object):
@@ -480,23 +466,26 @@ class DataPreprocessor(object):
         data['data'] = tf.expand_dims(data['data'], -1)
         data['label_data'] = tf.expand_dims(data['label_data'], -1)
 
-        # Random rotate
-        # angle = tf.random_uniform([], -0.45, 0.45)
-        # data['data'] = tf.contrib.image.rotate(data['data'], angle, interpolation='BILINEAR')
-        # data['label_data'] = tf.contrib.image.rotate(data['label_data'], angle, interpolation='NEAREST')
-
-        # Random shear:
-        # rand = []
-        # for z in range(4):
-        #     rand.append(tf.random_uniform([], minval=-0.2, maxval=0.2, dtype=tf.float32))
-        # data['data'] = tf.contrib.image.transform(data['data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
-        # data['label_data'] = tf.contrib.image.transform(data['label_data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0])
-
         # Reshape, bilinear for labels, cubic for data
         data['data'] = tf.image.resize_images(data['data'], [FLAGS.network_dims, FLAGS.network_dims],
                                               tf.compat.v1.image.ResizeMethod.BICUBIC)
         data['label_data'] = tf.image.resize_images(data['label_data'], [FLAGS.network_dims, FLAGS.network_dims],
                                                     tf.compat.v1.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+        # Random rotate
+        angle = tf.random_uniform([], -0.45, 0.45)
+        data['data'] = tf.contrib.image.rotate(data['data'], angle, interpolation='BILINEAR')
+        data['label_data'] = tf.contrib.image.rotate(data['label_data'], angle, interpolation='NEAREST')
+
+        # Random shear:
+        rand = []
+        for z in range(4):
+            rand.append(tf.random_uniform([], minval=-0.05, maxval=0.05, dtype=tf.float32))
+        data['data'] = tf.contrib.image.transform(data['data'], [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0],
+                                                  interpolation='BILINEAR')
+        data['label_data'] = tf.contrib.image.transform(data['label_data'],
+                                                        [1, rand[0], rand[1], rand[2], 1, rand[3], 0, 0],
+                                                        interpolation='NEAREST')
 
         # Randomly flip
         def flip(mode=None):
@@ -516,8 +505,8 @@ class DataPreprocessor(object):
                                                    lambda: flip(2), lambda: flip(0))
 
         # Random contrast and brightness
-        # data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
-        # data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
+        data['data'] = tf.image.random_brightness(data['data'], max_delta=2)
+        data['data'] = tf.image.random_contrast(data['data'], lower=0.975, upper=1.025)
 
         # Random gaussian noise
         T_noise = tf.random.uniform([], 0, 0.1)

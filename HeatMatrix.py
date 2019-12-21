@@ -87,56 +87,6 @@ def forward_pass_unet(images, phase_train):
     # Output is a 1x1 box with 3 labels
     Logits = sdn.convolution('Logits', dconv, 1, FLAGS.num_classes, S=1, phase_train=phase_train, BN=False, relu=False, bias=False)
 
-    # Retreive the weights collection
-    weights = tf.get_collection('weights')
-
-    # Sum the losses
-    L2_loss = tf.multiply(tf.add_n([tf.nn.l2_loss(v) for v in weights]), FLAGS.l2_gamma)
-
-    # Add it to the collection
-    tf.add_to_collection('losses', L2_loss)
-
-    # Activation summary
-    tf.summary.scalar('L2_Loss', L2_loss)
-
-    return Logits, L2_loss
-
-
-def forward_pass_class(images, phase_train):
-
-    """
-    This function builds the network architecture and performs the forward pass
-    Two main architectures depending on where to insert the inception or residual layer
-    :param images: Images to analyze
-    :param phase_train1: bool, whether this is the training phase or testing phase
-    :return: logits: the predicted age from the network
-    :return: l2: the value of the l2 loss
-    """
-
-    K = 16
-
-    # First layer is conv
-    print('Input Images: ', images)
-
-    # Residual blocks
-    conv = sdn.convolution('Conv1', images, 3, K, 2, phase_train=phase_train) # 128
-    conv = sdn.residual_layer('Residual1', conv, 3, K * 2, 2, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual2', conv, 3, K * 4, 2, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual3', conv, 3, K * 8, 2, phase_train=phase_train)  # 16x16
-    conv = sdn.residual_layer('Residual4', conv, 3, K * 8, 1, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual5', conv, 3, K * 16, 2, phase_train=phase_train)
-    conv = sdn.inception_layer('Inception6', conv, K * 16, S=1, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual7', conv, 3, K * 32, 2, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual8', conv, 3, K * 32, 1, phase_train=phase_train)
-    conv = sdn.residual_layer('Residual9', conv, 3, K * 32, 1, phase_train=phase_train)
-
-    print('End Dims', conv)
-
-    # Linear layers
-    fc = sdn.fc7_layer('FC', conv, 16, True, phase_train, FLAGS.dropout_factor, BN=True)
-    fc = sdn.linear_layer('Linear', fc, 8, False, phase_train, BN=True)
-    Logits = sdn.linear_layer('Output', fc, FLAGS.num_classes, False, phase_train, BN=False, relu=False, add_bias=False)
-
     return Logits, sdn.calc_L2_Loss(FLAGS.l2_gamma)
 
 
@@ -168,11 +118,6 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
     # Make labels one hot
     labels = tf.cast(tf.one_hot(labels, depth=FLAGS.num_classes, dtype=tf.uint8), tf.float32)
 
-    # # Flatten
-    # logits = tf.reshape(logits, [-1, FLAGS.num_classes])
-    # labels = tf.cast(tf.reshape(labels, [-1, FLAGS.num_classes]), tf.float32)
-    # mask = tf.cast(tf.reshape(mask, [-1]), tf.float32)
-
     if loss_type == 'DICE':
 
         # Get the generalized DICE loss
@@ -182,7 +127,8 @@ def total_loss(logits_tmp, labels_tmp, loss_type='COMBINED'):
         loss = tf.multiply(loss, mask)
 
         # Display loss landscape
-        tf.summary.image('Loss_Landscape', tf.reshape(loss[im_num], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
+        tf.summary.image('DICE_Landscape',
+                         tf.reshape(loss[im_num], shape=[1, FLAGS.network_dims, FLAGS.network_dims, 1]), 2)
 
         loss = tf.reduce_mean(loss)
         tf.summary.scalar('Dice_Loss', loss)
@@ -269,9 +215,6 @@ def backward_pass(total_loss):
 
     # Compute the gradients
     gradients = opt.compute_gradients(total_loss)
-
-    # clip the gradients
-    #gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients]
 
     # Apply the gradients
     train_op = opt.apply_gradients(gradients, global_step, name='train')
