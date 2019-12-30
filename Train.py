@@ -1,5 +1,5 @@
 import os
-import time
+import time, datetime
 
 import HeatMatrix as network
 import numpy as np
@@ -15,8 +15,8 @@ tf.app.flags.DEFINE_integer('box_dims', 1024, """dimensions of the input picture
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_epochs', 300, """Number of epochs to run""")
-tf.app.flags.DEFINE_integer('epoch_size', 6000, """How many examples""")
+tf.app.flags.DEFINE_integer('num_epochs', 261, """Number of epochs to run""")
+tf.app.flags.DEFINE_integer('epoch_size', 4400, """How many examples""")
 tf.app.flags.DEFINE_integer('print_interval', 10, """How often to print a summary to console during training""")
 tf.app.flags.DEFINE_integer('checkpoint_interval', 20, """How many Epochs to wait before saving a checkpoint""")
 tf.app.flags.DEFINE_integer('batch_size', 16, """Number of images to process in a batch.""")
@@ -35,7 +35,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -81,8 +81,6 @@ def train():
 
         # Restore moving average of the variables
         var_ema = tf.train.ExponentialMovingAverage(FLAGS.moving_avg_decay)
-
-        # Define variables to restore
         var_restore = var_ema.variables_to_restore()
 
         # Initialize the saver
@@ -129,6 +127,7 @@ def train():
 
                 # Console and Tensorboard print interval
                 if i % print_interval == 0:
+
                     # Load some metrics
                     _labels, _loss, _l2loss = mon_sess.run([labels, loss, l2loss], feed_dict={phase_train: True})
 
@@ -136,12 +135,12 @@ def train():
                     _loss *= 1e3
                     elapsed = timer / print_interval
                     timer = 0
+                    now = datetime.datetime.now().strftime("%m-%d %H:%M:%S")
 
                     # Print the data
                     np.set_printoptions(precision=2)
-                    print('-' * 70)
-                    print('Epoch %d, (%.1f eg/s), Total Loss: %s, L2 Loss : %s'
-                          % (Epoch, FLAGS.batch_size / elapsed, _loss, _l2loss))
+                    print('-' * 70, '\n%s -- Epoch %d, (%.1f eg/s), Total Loss: %s, L2 Loss : %s'
+                          % (now, Epoch, FLAGS.batch_size / elapsed, _loss, _l2loss))
 
                     # Run a session to retrieve our summaries
                     summary = mon_sess.run(all_summaries, feed_dict={phase_train: True})
