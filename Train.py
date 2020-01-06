@@ -15,11 +15,11 @@ tf.app.flags.DEFINE_integer('box_dims', 1024, """dimensions of the input picture
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_epochs', 261, """Number of epochs to run""")
-tf.app.flags.DEFINE_integer('epoch_size', 4400, """How many examples""")
+tf.app.flags.DEFINE_integer('num_epochs', 400, """Number of epochs to run""")
+tf.app.flags.DEFINE_integer('epoch_size', 1105, """How many examples""")
 tf.app.flags.DEFINE_integer('print_interval', 10, """How often to print a summary to console during training""")
 tf.app.flags.DEFINE_integer('checkpoint_interval', 20, """How many Epochs to wait before saving a checkpoint""")
-tf.app.flags.DEFINE_integer('batch_size', 16, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('batch_size', 64, """Number of images to process in a batch.""")
 
 # Hyperparameters:
 tf.app.flags.DEFINE_float('dropout_factor', 0.5, """ Keep probability""")
@@ -35,7 +35,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'UNet_Risk_Only/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 

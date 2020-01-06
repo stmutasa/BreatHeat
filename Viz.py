@@ -1,4 +1,3 @@
-import os
 import time
 
 import HeatMatrix as network
@@ -6,9 +5,10 @@ import tensorflow as tf
 import SODTester as SDT
 import SODLoader as SDL
 import SOD_Display as SDD
-import glob
+import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
+import numpy.ma as ma
 
 sdl = SDL.SODLoader(str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/')
 sdd = SDD.SOD_Display()
@@ -85,39 +85,32 @@ def test():
         # Trackers for best performers
         best_MAE, best_epoch = 0.25, 0
 
-        while True:
+        # Allow memory placement growth
+        config = tf.ConfigProto(log_device_placement=False, allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
 
-            # Allow memory placement growth
-            config = tf.ConfigProto(log_device_placement=False, allow_soft_placement=True)
-            config.gpu_options.allow_growth = True
+        # Init SDT
+        sdt = SDT.SODTester(True, False)
+
+        # Run once for all the saved checkpoints
+        ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir + FLAGS.RunInfo)
+        for checkpoint in ckpt.all_model_checkpoint_paths:
+
             with tf.Session(config=config) as mon_sess:
 
                 # Print run info
                 print("*** Validation Run %s on GPU %s ****" % (FLAGS.RunInfo, FLAGS.GPU))
 
-                # Retreive the checkpoint
-                ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir + FLAGS.RunInfo)
-
                 # Initialize the variables
                 mon_sess.run([var_init, iterator.initializer])
 
-                # Finalize the graph to detect memory leaks!
-                mon_sess.graph.finalize()
-
-                if ckpt and ckpt.model_checkpoint_path:
-
-                    # Restore the model
-                    saver.restore(mon_sess, ckpt.model_checkpoint_path)
-                    Epoch = ckpt.model_checkpoint_path.split('/')[-1].split('_')[-1]
-
-                else:
-                    print('No checkpoint file found')
-                    break
+                # Restore the model
+                saver.restore(mon_sess, checkpoint)
+                Epoch = checkpoint.split('/')[-1].split('_')[-1]
 
                 # Initialize some variables
                 step = 0
                 max_steps = int(FLAGS.epoch_size / FLAGS.batch_size)
-                sdt = SDT.SODTester(True, False)
 
                 try:
                     while step < max_steps:
@@ -127,80 +120,80 @@ def test():
                         # Increment step
                         step += 1
 
-                except tf.errors.OutOfRangeError:
-                    print('Done with Training - Epoch limit reached')
+                except Exception as e:
+                    print('Training Stopped: ', e)
 
                 finally:
 
-                    # TODO: Testing:
-                    cnt = [0, 0]
+                    # # TODO: Testing:
+                    # for z in range(200, 215):
+                    #     high_mean = ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean()
+                    #     low_mean = ma.masked_array(heatmap_low[z].flatten(), mask=~mask[z].flatten()).mean()
+                    #     idd = ('High: %.3f Low: %.3f %s' % (high_mean, low_mean, _data['patient'][z]))
+                    #     print(idd)
+                    #     sdd.display_single_image(heatmap_low[z], False, cmap='jet', title='L_' + idd)
+                    #     sdd.display_single_image(heatmap_high[z], False, title='H_' + idd)
+                    # sdd.display_single_image(mask[0], cmap='jet', title=idd)
+
+                    # Testing function
+                    # Generate a background mask
+                    mask = np.squeeze(_data['label_data'] > 0).astype(np.bool)
+
+                    # Get the group 1 heatmap and group 2 heatmap
+                    heatmap_high = _softmax_map[..., 1]
+                    heatmap_low = _softmax_map[..., 0]
+
+                    # Make the data array to save
+                    save_data, high_scores, low_scores, display = {}, [], [], []
+                    high_std, low_std = [], []
                     for z in range(FLAGS.batch_size):
-                        it = int(_data['cancer'][z])
-                        cnt[it] += 1
-                    print('Counts: ', cnt)
-                    mask = np.squeeze(_data['label_data'])
-                    mask[mask > 1] = True
-                    heatmap = _softmax_map[..., 1]
-                    blank_heatmap = heatmap * mask
-                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
-                    # sdd.display_volume(heatmap[30:45], False, cmap='jet')
-                    # sdd.display_volume(blank_heatmap[30:45], True, cmap='jet')
-                    for z in range(200, 264):
-                        idd = _data['patient'][z]
-                        sdd.display_single_image(heatmap[z], False, cmap='jet', title=idd)
-                    sdd.display_single_image(heatmap[0], cmap='jet', title=idd)
 
-                    # Testing
-                    pred_map = sdt.return_binary_segmentation(_softmax_map, 0.5, 1, True)
-                    print('Epoch: %s, Best Epoch: %s (%.3f)' % (Epoch, best_epoch, best_MAE))
-                    dice, mcc = sdt.calculate_segmentation_metrics(pred_map, _data['label_data'])
+                        # Generate the dictionary
+                        save_data[z] = {
+                            'Accno': _data['accno'][z].decode('utf-8'),
+                            'Cancer Label': int(_data['cancer'][z]),
+                            'Image_Info': _data['view'][z].decode('utf-8'),
+                            'Cancer Score': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean(),
+                            'Benign Score': ma.masked_array(heatmap_low[z].flatten(), mask=~mask[z].flatten()).mean(),
+                            'Max Value': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).max(),
+                            'Min Value': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).min(),
+                            'Standard Deviation': ma.masked_array(heatmap_high[z].flatten(),
+                                                                  mask=~mask[z].flatten()).std(),
+                            'Variance': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).var(),
+                        }
 
-                    # Lets save runs that perform well
-                    if mcc >= best_MAE:
+                        # Append the scores
+                        if save_data[z]['Cancer Label'] == 1:
+                            high_scores.append(save_data[z]['Cancer Score'])
+                        else:
+                            low_scores.append(save_data[z]['Cancer Score'])
+                        if save_data[z]['Cancer Label'] == 1:
+                            high_std.append(save_data[z]['Standard Deviation'])
+                        else:
+                            low_std.append(save_data[z]['Standard Deviation'])
 
-                        # Save the checkpoint
-                        print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
+                        # Generate image to append to display
+                        display.append(np.copy(heatmap_high[z]) * mask[z])
 
-                        # Define the filenames
-                        checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo,
-                                                       ('Epoch_%s_DICE_%0.3f' % (Epoch, sdt.AUC)))
+                    # Save the data array
+                    High, Low = float(np.mean(np.asarray(high_scores))), float(np.mean(np.asarray(low_scores)))
+                    hstd, lstd = float(np.mean(np.asarray(high_std))), float(np.mean(np.asarray(low_std)))
+                    diff = High - Low
+                    print('Epoch: %s, Diff: %.3f, AVG High: %.3f (%.3f), AVG Low: %.3f (%.3f)' % (
+                    Epoch, diff, High, hstd, Low, lstd))
+                    sdt.save_dic_csv(save_data, ('testing/' + FLAGS.RunInfo + '/E_%s_Data.csv' % Epoch),
+                                     index_name='ID')
 
-                        # Save the checkpoint
-                        saver.save(mon_sess, checkpoint_file)
+                    # Now save the vizualizations
+                    # sdl.save_gif_volume(np.asarray(display), ('testing/' + FLAGS.RunInfo + '/E_%s_Viz.gif' % Epoch), scale=0.5)
+                    sdd.display_volume(display, False, cmap='jet')
 
-                        # Save a new best MAE
-                        best_MAE = mcc
-                        best_epoch = Epoch
-
-                        if FLAGS.gif:
-
-                            # Delete prior screenshots
-                            if tf.gfile.Exists('testing/' + FLAGS.RunInfo + 'Screenshots/'):
-                                tf.gfile.DeleteRecursively('testing/' + FLAGS.RunInfo + 'Screenshots/')
-                            tf.gfile.MakeDirs('testing/' + FLAGS.RunInfo + 'Screenshots/')
-
-                            # Plot all images
-                            for i in range(FLAGS.batch_size):
-                                file = ('testing/' + FLAGS.RunInfo + 'Screenshots/' + 'test_%s.gif' % i)
-                                sdt.plot_img_and_mask3D(_data['data'][i], pred_map[i], _data['label_data'][i], file)
+                    del heatmap_high, heatmap_low, mask, _data, _softmax_map
 
                     # Shut down the session
                     mon_sess.close()
 
-            # Print divider
-            print('-' * 70)
-
-            # Otherwise check folder for changes
-            filecheck = glob.glob(FLAGS.train_dir + FLAGS.RunInfo + '*')
-            newfilec = filecheck
-
-            # Sleep if no changes
-            while filecheck == newfilec:
-                # Sleep
-                time.sleep(5)
-
-                # Recheck the folder for changes
-                newfilec = glob.glob(FLAGS.train_dir + FLAGS.RunInfo + '*')
+        plt.show()
 
 
 def main(argv=None):  # pylint: disable=unused-argument

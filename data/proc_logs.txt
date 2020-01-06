@@ -53,6 +53,7 @@ Saving segregated tfrecords... 1023 in data/PREV_3
 
 Total:6627, 5175 pos, class probs [0.219, 0.781]
 w/o Chemoprev: Tot 2566, 1114 pos, 1452 Neg, class probs [0.566, 0.4341]
+Risk Only: Tot: 1476 (1105) 1056 neg, 420 pos, [0.715, 0.284]
 
 
 
