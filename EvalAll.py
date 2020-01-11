@@ -23,7 +23,7 @@ tf.app.flags.DEFINE_integer('epoch_size', 371, """Batch 1""")
 tf.app.flags.DEFINE_integer('batch_size', 371, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Fixed_Combined_Risk/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 tf.app.flags.DEFINE_integer('gifs', 0, """ save gifs or not""")
