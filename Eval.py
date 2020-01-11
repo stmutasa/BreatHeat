@@ -7,8 +7,10 @@ import SODTester as SDT
 import SODLoader as SDL
 import SOD_Display as SDD
 import glob
+import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
+import numpy.ma as ma
 
 sdl = SDL.SODLoader(str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/')
 sdd = SDD.SOD_Display()
@@ -19,11 +21,12 @@ _author_ = 'Simi'
 FLAGS = tf.app.flags.FLAGS
 
 # >5k example lesions total
-tf.app.flags.DEFINE_integer('epoch_size', 371, """Batch 1""")
-tf.app.flags.DEFINE_integer('batch_size', 371, """Number of images to process in a batch.""")
+# tf.app.flags.DEFINE_integer('epoch_size', 371, """Risk 1""")
+tf.app.flags.DEFINE_integer('epoch_size', 4298, """Julia 1k""")
+tf.app.flags.DEFINE_integer('batch_size', 307, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 
@@ -119,41 +122,103 @@ def test():
                 max_steps = int(FLAGS.epoch_size / FLAGS.batch_size)
                 sdt = SDT.SODTester(True, False)
 
+                # Dictionary of arrays merging function
+                def _merge_dicts(dict1={}, dict2={}):
+                    ret_dict = {}
+                    for key, index in dict1.items(): ret_dict[key] = np.concatenate([dict1[key], dict2[key]])
+                    return ret_dict
+
                 try:
                     while step < max_steps:
 
                         # Load some metrics for testing
-                        _softmax_map, _data = mon_sess.run([softmax_map, data], feed_dict={phase_train: False})
+                        _softmax_map_, _data_ = mon_sess.run([softmax_map, data], feed_dict={phase_train: False})
+
+                        # Combine cases
+                        del _data_['data']
+                        if step == 0:
+                            _softmax_map = np.copy(_softmax_map_)
+                            _data = dict(_data_)
+                        else:
+                            _softmax_map = np.concatenate([_softmax_map, _softmax_map_])
+                            _data = _merge_dicts(_data, _data_)
 
                         # Increment step
                         step += 1
 
-                except tf.errors.OutOfRangeError:
-                    print('Done with Training - Epoch limit reached')
+                except Exception as e:
+                    print(e)
 
                 finally:
 
-                    # Testing
-                    pred_map = sdt.return_binary_segmentation(_softmax_map, 0.5, 1, True)
+                    # Generate a background mask
+                    mask = np.squeeze(_data['label_data'] > 0).astype(np.bool)
 
-                    # TODO: Dummy MCC
-                    mcc = 0
+                    # Get the group 1 heatmap and group 2 heatmap
+                    heatmap_high = _softmax_map[..., 1]
+                    heatmap_low = _softmax_map[..., 0]
+
+                    # Make the data array to save
+                    save_data, high_scores, low_scores, display = {}, [], [], []
+                    high_std, low_std = [], []
+                    for z in range(FLAGS.epoch_size):
+
+                        # Generate the dictionary
+                        save_data[z] = {
+                            'Accno': _data['accno'][z].decode('utf-8'),
+                            'Cancer Label': int(_data['cancer'][z]),
+                            'Image_Info': _data['view'][z].decode('utf-8'),
+                            'Cancer Score': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean(),
+                            'Benign Score': ma.masked_array(heatmap_low[z].flatten(), mask=~mask[z].flatten()).mean(),
+                            'Max Value': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).max(),
+                            'Min Value': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).min(),
+                            'Standard Deviation': ma.masked_array(heatmap_high[z].flatten(),
+                                                                  mask=~mask[z].flatten()).std(),
+                            'Variance': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).var(),
+                        }
+
+                        # Append the scores
+                        if save_data[z]['Cancer Label'] == 1:
+                            high_scores.append(save_data[z]['Cancer Score'])
+                        else:
+                            low_scores.append(save_data[z]['Cancer Score'])
+                        if save_data[z]['Cancer Label'] == 1:
+                            high_std.append(save_data[z]['Standard Deviation'])
+                        else:
+                            low_std.append(save_data[z]['Standard Deviation'])
+
+                        # Generate image to append to display
+                        display.append(np.copy(heatmap_high[z]) * mask[z])
+
+                    # Save the data array
+                    High, Low = float(np.mean(np.asarray(high_scores))), float(np.mean(np.asarray(low_scores)))
+                    hstd, lstd = float(np.mean(np.asarray(high_std))), float(np.mean(np.asarray(low_std)))
+                    diff = High - Low
+                    print('Epoch: %s, Diff: %.3f, AVG High: %.3f (%.3f), AVG Low: %.3f (%.3f)' % (
+                        Epoch, diff, High, hstd, Low, lstd))
+                    sdt.save_dic_csv(save_data, 'Julia1k_UNet2.csv', index_name='ID')
+
+                    # Now save the vizualizations
+                    # sdl.save_gif_volume(np.asarray(display), ('testing/' + FLAGS.RunInfo + '/E_%s_Viz.gif' % Epoch), scale=0.5)
+                    sdd.display_volume(display, False, cmap='jet')
+
+                    del heatmap_high, heatmap_low, mask, _data, _softmax_map
 
                     # Lets save runs that perform well
-                    if mcc >= best_MAE:
-                        # Save the checkpoint
-                        print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
-
-                        # Define the filenames
-                        checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo,
-                                                       ('Epoch_%s_DICE_%0.3f' % (Epoch, sdt.AUC)))
-
-                        # Save the checkpoint
-                        saver.save(mon_sess, checkpoint_file)
-
-                        # Save a new best MAE
-                        best_MAE = mcc
-                        best_epoch = Epoch
+                    # if mcc >= best_MAE:
+                    #     # Save the checkpoint
+                    #     print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
+                    #
+                    #     # Define the filenames
+                    #     checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo,
+                    #                                    ('Epoch_%s_DICE_%0.3f' % (Epoch, sdt.AUC)))
+                    #
+                    #     # Save the checkpoint
+                    #     saver.save(mon_sess, checkpoint_file)
+                    #
+                    #     # Save a new best MAE
+                    #     best_MAE = mcc
+                    #     best_epoch = Epoch
 
                     # Shut down the session
                     mon_sess.close()

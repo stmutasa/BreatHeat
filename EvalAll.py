@@ -125,17 +125,6 @@ def test():
 
                 finally:
 
-                    # # TODO: Testing:
-                    # for z in range(200, 215):
-                    #     high_mean = ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean()
-                    #     low_mean = ma.masked_array(heatmap_low[z].flatten(), mask=~mask[z].flatten()).mean()
-                    #     idd = ('High: %.3f Low: %.3f %s' % (high_mean, low_mean, _data['patient'][z]))
-                    #     print(idd)
-                    #     sdd.display_single_image(heatmap_low[z], False, cmap='jet', title='L_' + idd)
-                    #     sdd.display_single_image(heatmap_high[z], False, title='H_' + idd)
-                    # sdd.display_single_image(mask[0], cmap='jet', title=idd)
-
-                    # Testing function
                     # Generate a background mask
                     mask = np.squeeze(_data['label_data'] > 0).astype(np.bool)
 
