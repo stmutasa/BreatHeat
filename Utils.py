@@ -9,6 +9,7 @@ import SOD_Display as SDD
 from pathlib import Path
 import os
 import pydicom as dicom
+import shutil
 
 from random import shuffle
 
@@ -27,7 +28,7 @@ sdl = SDL.SODLoader(data_root=home_dir)
 sdd = SDD.SOD_Display()
 
 
-def pre_process_Julia1k(box_dims=1024):
+def pre_process_1k(box_dims=1024):
     """
     Loads the 1k chemoprevention files
     :param box_dims: dimensions of the saved images
@@ -68,10 +69,22 @@ def pre_process_Julia1k(box_dims=1024):
             print('Unable to Load header info: %s - %s' % (e, file))
             continue
 
+        # Skip non breasts
+        if 'BREAST' not in header['tags'].BodyPartExamined: continue
+
+        # Skip mag views based on SOD/SID
+        SOD = header['tags'].DistanceSourceToPatient
+        SID = header['tags'].DistanceSourceToDetector
+        SOD_SID = int(SID) / int(SOD)
+        if SOD_SID > 1.25: continue
+
+        # Skip views that aren't CC or MLO
+        if view != 'MLO' and view != 'CC' and view != 'XCCL': continue
+
         # Set info
-        patient = 'Julia1k_' + MRN + '_' + accno
-        view = patient + '_' + laterality + view
-        group = 'Julia1k'
+        patient = '1k_' + MRN + '_' + accno
+        view = '1k_' + accno + '_' + laterality + view
+        group = '1k'
         cancer = 0
 
         """
@@ -113,50 +126,118 @@ def pre_process_Julia1k(box_dims=1024):
         pt += 1
         del image, mask, labels
 
-        # # Save after 3k
-        # if index % 3000 == 0:
-        #     sdl.sav
-
     # Done with all patients
     print('Made %s BRCA boxes from %s patients' % (index, pt,), counter)
 
     # Save the data.
     sdl.save_dict_filetypes(data[0])
-    sdl.save_segregated_tfrecords(2, data, 'patient', 'data/Julia1k')
+    sdl.save_segregated_tfrecords(2, data, 'patient', 'data/1k')
 
 
-def check_files():
+def re_save_1k():
+    """
+    Loads the 1k chemoprevention files and resaves the DICOM
+    :param box_dims: dimensions of the saved images
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
     path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Julia1k'
+    save_path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Reprocessed_1k/'
+    filenames = sdl.retreive_filelist('**', True, path)
+    shuffle(filenames)
 
-    DOMAIN = "http://localhost:5000"
+    # Global variables
+    display, counter, skipped, data_test, index, pt = [], [0, 0], [], {}, 0, 0
 
-    # The files
-    files = sdl.retreive_filelist('**', True, path)
-    test, accnos = [], []
-    index, count = 0, 0
-    save_dict, failed_dict = {}, {}
+    for file in filenames:
 
-    print('Preprocessing %s files' % len(files))
-    folders_ran = []
-    for file in files:
+        """
+        Retreive patient number
+        All of these are DICOMs
+        View = unique to that view (BRCA_Cancer_1_LCC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        # Load the Dicom
         try:
-            # Load accession number
-            acc = get_accno(file)
-            if acc == -1: continue
-
-            # Get  unique counts
-            folders_ran.append(os.path.dirname(file))
-            unique, counts = np.unique(np.asarray(folders_ran), return_counts=True)
-            check_dict = dict(zip(unique, counts))
-
-            # File name
-            patient = 'Julia1k_' + file.split('/')[-3]
-            view = patient + '_' + str(check_dict[os.path.dirname(file)])
-            test.append(open(file, 'rb'))
-            accnos.append((patient, acc, view))
-        except:
-            print('Failed to load: ', file)
+            image, accno, _, _, header = sdl.load_DICOM_2D(file)
+        except Exception as e:
+            # print('DICOM Error: %s' %e)
             continue
 
+        # Retreive the accession number
+        try:
+            view = header['tags'].ViewPosition
+            laterality = header['tags'].ImageLaterality
+        except Exception as e:
+            # print('Header error: %s' %e)
+            continue
 
-pre_process_Julia1k()
+        # Resize image
+        image = sdl.zoom_2D(image, [256, 256]).astype(np.int16)
+
+        """
+            Some Mag views are still getting through
+            Also some negative photometrics are getting through
+                SID/SOD skips most
+                FieldOfViewDimensions? 
+                Tried and failed: DetectorBinning FocalSpots Grid np.max()
+                ViewPosition not CC or MLO
+        """
+
+        # Skip non breasts
+        if 'BREAST' not in header['tags'].BodyPartExamined:
+            test1 = header['tags'].BodyPartExamined
+            image = sdd.return_image_text_overlay(('%s %s' % ('NOT BREAST', test1)), image)
+            skipped.append(image)
+            continue
+
+        # Skip mag views based on SOD/SID
+        SOD = header['tags'].DistanceSourceToPatient
+        SID = header['tags'].DistanceSourceToDetector
+        SOD_SID = int(SID) / int(SOD)
+        if SOD_SID > 1.25:
+            test1 = SOD_SID
+            image = sdd.return_image_text_overlay(('%s %s' % ('SOD_SID: ', test1)), image)
+            skipped.append(image)
+            continue
+
+        # Skip views that aren't CC or MLO
+        if view != 'MLO' and view != 'CC' and view != 'XCCL':
+            image = sdd.return_image_text_overlay(('%s %s' % ('View: ', view)), image)
+            skipped.append(image)
+            continue
+
+        # Save display
+        # test1 = header['tags'].Grid
+        # test2 = header['tags'].DetectorBinning
+        # image = sdd.return_image_text_overlay(('%s %s' % (test2, test1)), image)
+        # display.append(image)
+        del image
+
+        # Set info
+        patient = '1k_' + str(index)
+        view = patient + '_' + laterality + view
+
+        # Filename
+        savedir = (save_path + accno + '/')
+        savefile = savedir + view + '.dcm'
+        if not os.path.exists(savedir): os.makedirs(savedir)
+
+        # Copy to the destination folder
+        shutil.copyfile(file, savefile)
+        if index % 100 == 0 and index > 1:
+            print('\nSaving pt %s of %s to dest: %s_%s\n' % (index, len(filenames), accno, view))
+
+        # Increment counters
+        index += 1
+        pt += 1
+
+    print('Done with %s images saved' % index)
+    sdd.display_volume(skipped, True)
+    # sdd.display_volume(display, True)
+
+
+pre_process_1k()
+# re_save_1k()
