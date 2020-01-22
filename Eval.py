@@ -22,11 +22,13 @@ FLAGS = tf.app.flags.FLAGS
 
 # >5k example lesions total
 # tf.app.flags.DEFINE_integer('epoch_size', 371, """Risk 1""")
-tf.app.flags.DEFINE_integer('epoch_size', 4298, """Julia 1k""")
-tf.app.flags.DEFINE_integer('batch_size', 307, """Number of images to process in a batch.""")
+# tf.app.flags.DEFINE_integer('epoch_size', 1809, """1kCC - 201""")
+# tf.app.flags.DEFINE_integer('epoch_size', 3699, """1kCCMLO - 137""")
+tf.app.flags.DEFINE_integer('epoch_size', 4061, """Chemoprevention - 131""")
+tf.app.flags.DEFINE_integer('batch_size', 131, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed2/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'Initial_Dice/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 
@@ -151,7 +153,7 @@ def test():
 
                 finally:
 
-                    # Generate a background mask
+                    # Get the background mask
                     mask = np.squeeze(_data['label_data'] > 0).astype(np.bool)
 
                     # Get the group 1 heatmap and group 2 heatmap
@@ -187,8 +189,26 @@ def test():
                         else:
                             low_std.append(save_data[z]['Standard Deviation'])
 
+                        """ 
+                        Make some corner pixels max and min for display purposes
+                        Good Display Runs: Unet_Fixed2 epoch 60, and Initial_Dice epoch 149
+                        """
+                        image = np.copy(heatmap_high[z]) * mask[z]
+                        # max, min = 0.9, 0.2
+                        max, min = np.max(heatmap_high[z]), np.min(heatmap_high[z])
+                        image[0, 0] = max
+                        image[255, 255] = min
+                        image = np.clip(image, min, max)
+                        # sdd.display_single_image(image, True, title=save_data[z]['Image_Info'], cmap='jet')
+                        save_file = 'imgs/' + save_data[z]['Image_Info'] + '.png'
+                        save_file = save_file.replace('PREV', '')
+                        if 'CC' not in save_file: continue
+                        # sdd.save_image(image, save_file)
+                        plt.imsave(save_file, image, cmap='jet')
+
                         # Generate image to append to display
-                        display.append(np.copy(heatmap_high[z]) * mask[z])
+                        # display.append(np.copy(heatmap_high[z]) * mask[z])
+                        display.append(image)
 
                     # Save the data array
                     High, Low = float(np.mean(np.asarray(high_scores))), float(np.mean(np.asarray(low_scores)))
@@ -196,11 +216,11 @@ def test():
                     diff = High - Low
                     print('Epoch: %s, Diff: %.3f, AVG High: %.3f (%.3f), AVG Low: %.3f (%.3f)' % (
                         Epoch, diff, High, hstd, Low, lstd))
-                    sdt.save_dic_csv(save_data, 'Julia1k_UNet2.csv', index_name='ID')
+                    #sdt.save_dic_csv(save_data, '1kCCMLO_UNet2.csv', index_name='ID')
 
                     # Now save the vizualizations
                     # sdl.save_gif_volume(np.asarray(display), ('testing/' + FLAGS.RunInfo + '/E_%s_Viz.gif' % Epoch), scale=0.5)
-                    sdd.display_volume(display, False, cmap='jet')
+                    sdd.display_volume(display, True, cmap='jet')
 
                     del heatmap_high, heatmap_low, mask, _data, _softmax_map
 
@@ -223,20 +243,21 @@ def test():
                     # Shut down the session
                     mon_sess.close()
 
-            # Print divider
-            print('-' * 70)
-
-            # Otherwise check folder for changes
-            filecheck = glob.glob(FLAGS.train_dir+FLAGS.RunInfo + '*')
-            newfilec = filecheck
-
-            # Sleep if no changes
-            while filecheck == newfilec:
-                # Sleep
-                time.sleep(5)
-
-                # Recheck the folder for changes
-                newfilec = glob.glob(FLAGS.train_dir+FLAGS.RunInfo + '*')
+            # # Print divider
+            # print('-' * 70)
+            #
+            # # Otherwise check folder for changes
+            # filecheck = glob.glob(FLAGS.train_dir+FLAGS.RunInfo + '*')
+            # newfilec = filecheck
+            #
+            # # Sleep if no changes
+            # while filecheck == newfilec:
+            #     # Sleep
+            #     time.sleep(5)
+            #
+            #     # Recheck the folder for changes
+            #     newfilec = glob.glob(FLAGS.train_dir+FLAGS.RunInfo + '*')
+            break
 
 
 def main(argv=None):  # pylint: disable=unused-argument

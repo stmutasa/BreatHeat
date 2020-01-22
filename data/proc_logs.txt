@@ -56,6 +56,10 @@ w/o Chemoprev: Tot 2566, 1114 pos, 1452 Neg, class probs [0.566, 0.4341]
 Risk Only: Tot: 1476 (1105) 1056 neg, 420 pos, [0.715, 0.284]
 
 Julia only 4299 saved 
+Saving segregated tfrecords... 1914 in data/1kCCMLO_0
+Saving segregated tfrecords... 1785 in data/1kCCMLO_1
+Saving segregated tfrecords... 904 in data/1kCC_0
+Saving segregated tfrecords... 905 in data/1kCC_1
 
 
 

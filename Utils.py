@@ -38,7 +38,7 @@ def pre_process_1k(box_dims=1024):
     # Load the filenames and randomly shuffle them
     path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Julia1k'
     filenames = sdl.retreive_filelist('**', True, path)
-    shuffle(filenames)
+    # shuffle(filenames)
 
     # Global variables
     display, counter, data, data_test, index, pt = [], [0, 0], {}, {}, 0, 0
@@ -78,8 +78,9 @@ def pre_process_1k(box_dims=1024):
         SOD_SID = int(SID) / int(SOD)
         if SOD_SID > 1.25: continue
 
-        # Skip views that aren't CC or MLO
+        # TODO: Skip views that aren't CC or MLO
         if view != 'MLO' and view != 'CC' and view != 'XCCL': continue
+        #if view != 'CC' and view != 'XCCL': continue
 
         # Set info
         patient = '1k_' + MRN + '_' + accno
@@ -129,9 +130,9 @@ def pre_process_1k(box_dims=1024):
     # Done with all patients
     print('Made %s BRCA boxes from %s patients' % (index, pt,), counter)
 
-    # Save the data.
+    # TODO: Save the data.
     sdl.save_dict_filetypes(data[0])
-    sdl.save_segregated_tfrecords(2, data, 'patient', 'data/1k')
+    sdl.save_segregated_tfrecords(2, data, 'patient', 'data/1kCCMLO')
 
 
 def re_save_1k():

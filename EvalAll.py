@@ -19,11 +19,11 @@ _author_ = 'Simi'
 FLAGS = tf.app.flags.FLAGS
 
 # >5k example lesions total
-tf.app.flags.DEFINE_integer('epoch_size', 371, """Batch 1""")
-tf.app.flags.DEFINE_integer('batch_size', 371, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 300, """Chemoprevention""")
+tf.app.flags.DEFINE_integer('batch_size', 300, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'Fixed_Combined_Risk/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'UNet_Risk_Only/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 tf.app.flags.DEFINE_integer('gifs', 0, """ save gifs or not""")
@@ -161,8 +161,19 @@ def test():
                         else:
                             low_std.append(save_data[z]['Standard Deviation'])
 
+                        # TODO: Make some corner pixels max and min for display purposes
+                        # Try: Tightening range, CV scaling
+                        image = np.copy(heatmap_high[z]) * mask[z]
+                        # max, min = 0.9, 0.2
+                        max, min = np.max(heatmap_high[z]), np.min(heatmap_high[z])
+                        image[0, 0] = max
+                        image[255, 255] = min
+                        image = np.clip(image, min, max)
+                        # sdd.display_single_image(image, True, title=save_data[z]['Image_Info'], cmap='jet')
+                        display.append(image)
+
                         # Generate image to append to display
-                        display.append(np.copy(heatmap_high[z]) * mask[z])
+                        # display.append(np.copy(heatmap_high[z]) * mask[z])
 
                     # Save the data array
                     High, Low = float(np.mean(np.asarray(high_scores))), float(np.mean(np.asarray(low_scores)))
@@ -177,7 +188,7 @@ def test():
                     # sdl.save_gif_volume(np.asarray(display), ('testing/' + FLAGS.RunInfo + '/E_%s_Viz.gif' % Epoch), scale=0.5)
                     sdd.display_volume(display, False, cmap='jet')
 
-                    del heatmap_high, heatmap_low, mask, _data, _softmax_map
+                    del heatmap_high, heatmap_low, mask, _data, _softmax_map, image
 
                     # Shut down the session
                     mon_sess.close()
