@@ -61,5 +61,17 @@ Saving segregated tfrecords... 1785 in data/1kCCMLO_1
 Saving segregated tfrecords... 904 in data/1kCC_0
 Saving segregated tfrecords... 905 in data/1kCC_1
 
+Made 1936 Chemoprevention boxes from 1936 patients
+Saving segregated tfrecords... 495 in data/CPRV_B5_CC_0
+Saving segregated tfrecords... 460 in data/CPRV_B5_CC_1
+Saving segregated tfrecords... 528 in data/CPRV_B5_CC_2
+Saving segregated tfrecords... 453 in data/CPRV_B5_CC_3
+
+Made 380 BRCA boxes from 380 patients [0, 380, 0]
+Saving segregated tfrecords... 94 in data/CPRV_1YR_CC_0
+Saving segregated tfrecords... 86 in data/CPRV_1YR_CC_1
+Saving segregated tfrecords... 97 in data/CPRV_1YR_CC_2
+Saving segregated tfrecords... 103 in data/CPRV_1YR_CC_3
+
 
 

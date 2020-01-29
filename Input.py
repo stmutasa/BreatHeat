@@ -27,6 +27,7 @@ import tensorflow as tf
 import SODLoader as SDL
 import SOD_Display as SDD
 from pathlib import Path
+import os
 
 from random import shuffle
 
@@ -44,287 +45,21 @@ chemo_dir = home_dir + 'Chemoprevention/'
 sdl = SDL.SODLoader(data_root=home_dir)
 sdd = SDD.SOD_Display()
 
-def pre_process_BRCA(box_dims=1024):
-
-    """
-    Loads the files to a protobuf
-    :param box_dims: dimensions of the saved images
-    :return:
-    """
-
-    # Load the filenames and randomly shuffle them
-    filenames = sdl.retreive_filelist('dcm', True, brca_dir)
-    shuffle(filenames)
-
-    # Global variables
-    display, counter, data, data_test, index, pt = [], [0, 0], {}, {}, 0, 0
-
-    for file in filenames:
-
-        """
-        Retreive patient number, two different if statements because...
-        
-        # /BRCA/G3_Neg_NoMutations/3/Serxx.dcm
-        # /BRCA/G3_Neg_MinorMutations/3/Serxx.dcm
-        # /BRCA/G1_PosBRCA/NoCancer/Patient 1/L CC/Ser.dcm
-        # /BRCA/G1_PosBRCA/Cancer/Patient 1/L CC/Ser.dcm
-        
-        We want: group = source of positive, brca vs risk 
-        Patient = similar to accession, (can have multiple views) (BRCApos_Cancer_1, BRCAneg_NoMutations_1)
-        View = unique to that view (BRCA_Cancer_1_LCC)
-        Label = 1 if cancer, 0 if not 
-        """
-
-        group = 'BRCA'
-
-        if 'G1_PosBRCA' in file:
-            patient = 'BRCApos_' + file.split('/')[-4] + '_' + file.split('/')[-3].split(' ')[-1]
-            view = patient + '_' + file.split('/')[-2].replace(' ', '')
-            if 'NoCancer' in file: cancer=0
-            else: cancer = 1
-        else:
-            patient = 'BRCAneg_' + file.split('/')[-3].split('_')[-1] + '_' + file.split('/')[-2]
-            view = patient + '_' + file.split('/')[-1].split('.')[0][-1]
-            cancer = 0
-
-        # Load and resize image
-        try: image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
-        except:
-            print ("Failed to load: ", file)
-            continue
-
-        """
-                We have two methods to generate breast masks, they fail on different examples. 
-                Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
-                So then use method 2
-        """
-        mask = sdl.create_mammo_mask(image, check_mask=True)
-
-        # Some masks just won't play ball
-        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
-        if mask_idx > 0.8 or mask_idx < 0.1:
-            print('Failed to generate mask... ', view)
-            continue
-
-        # Multiply image by mask to make background 0
-        try: image *= mask
-        except:
-            print ('Failed to apply mask... ', view, image.shape, image.dtype, mask.shape, mask.dtype)
-
-        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
-        image = sdl.zoom_2D(image, [box_dims, box_dims])
-        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
-
-        # Normalize the mammograms using contrast localized adaptive histogram normalization
-        image = sdl.adaptive_normalization(image).astype(np.float32)
-
-        # Zero the background again.
-        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
-
-        # Save the data
-        data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
-                       'group': group, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
-
-        # Increment counters
-        index += 1
-        counter[cancer] += 1
-        pt += 1
-        del image, mask, labels
-
-    # Done with all patients
-    print('Made %s BRCA boxes from %s patients' % (index, pt,), counter)
-
-    # Save the data.
-    sdl.save_dict_filetypes(data[0])
-    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/BRCA')
-
-
-def pre_process_RISK(box_dims=1024):
-    """
-    Loads the files to a protobuf
-    :param box_dims: dimensions of the saved images
-    :return:
-    """
-
-    # Load the filenames and randomly shuffle them
-    filenames = sdl.retreive_filelist('dcm', True, risk_dir)
-    shuffle(filenames)
-
-    # Global variables
-    display, counter, data, data_test, index, pt = [], [0, 0], {}, {}, 0, 0
-
-    for file in filenames:
-
-        """
-        Retreive patient number...
-
-        # /RiskStudy/LowRisk/Normal/1/imgxxx.dcm (1+)
-
-        We want: group = source of positive, brca vs risk 
-        Patient = similar to accession, (can have multiple views) (RiskHigh_Cancer_1, RiskNl_Normal_1)
-        View = unique to that view
-        Label = 1 if cancer, 0 if not 
-        """
-
-        group = 'RISK'
-
-        patient = file.split('/')[-4] + '_' +  file.split('/')[-3] + '_' + file.split('/')[-2]
-        view = patient + '_' + file.split('/')[-1].split('.')[0][-1]
-
-        if 'Cancer' in file: cancer = 1
-        else: cancer = 0
-
-        # Load and resize image
-        try:
-            image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
-        except:
-            print("Failed to load: ", file)
-            continue
-
-        """
-                We have two methods to generate breast masks, they fail on different examples. 
-                Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
-                So then use method 2
-        """
-        mask = sdl.create_mammo_mask(image, check_mask=True)
-
-        # Some masks just won't play ball
-        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
-        if mask_idx > 0.8 or mask_idx < 0.1:
-            print('Failed to generate mask... ', view)
-            continue
-
-        # Multiply image by mask to make background 0
-        image *= mask
-
-        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
-        image = sdl.zoom_2D(image, [box_dims, box_dims])
-        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
-
-        # Normalize the mammograms using contrast localized adaptive histogram normalization
-        image = sdl.adaptive_normalization(image).astype(np.float32)
-
-        # Zero the background again.
-        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
-
-        # Save the data
-        data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
-                       'group': group, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
-
-        # Increment counters
-        index += 1
-        counter[cancer] += 1
-        pt += 1
-        del image, mask, labels
-
-    # Done with all patients
-    print('Made %s RISK boxes from %s patients' % (index, pt,), counter)
-
-    # Save the data.
-    sdl.save_dict_filetypes(data[0])
-    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/RISK')
-
-
-def pre_process_CALCS(box_dims=1024):
-
-    """
-    Loads the files to a protobuf
-    :param box_dims: dimensions of the saved images
-    :return:
-    """
-
-    # Load the filenames and randomly shuffle them
-    filenames = sdl.retreive_filelist('dcm', True, calc_dir)
-    shuffle(filenames)
-
-    # Don't include folder 3 or 4 dicoms
-    filenames = [x for x in filenames if '/1/' in x or '/2/' in x]
-
-    # Global variables
-    display, counter, data, index, pt = [], [0, 0], {}, 0, 0
-
-    for file in filenames:
-
-        """
-        Retreive patient number
-        
-        # /Calcs/Eduardo/ADH/Patient 25 YES/1/ser42096img00006.dcm'
-
-        We want: group = source of positive, brca vs risk 
-        Patient = similar to accession, (can have multiple views) (CALCSADH_19_YES)
-        View = unique to that view (CALCSADH_19_YES_CC)
-        Label = 1 if cancer, 0 if not 
-        """
-
-        group = 'CALCS'
-
-        patient = 'CALCS' + file.split('/')[-4] + '_' + file.split('/')[-3].split(' ')[1] + '_' + file.split('/')[-1].split('.')[0][-1]
-        view = patient + '_' + ('CC' if '/1/' in file else 'MLO')
-
-        # All of these are technically cancer
-        cancer = 1
-
-        # Load and resize image
-        try:
-            image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
-        except:
-            print("Failed to load: ", file)
-            continue
-
-        """
-        We have two methods to generate breast masks, they fail on different examples. 
-        Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
-        So then use method 2
-        """
-        mask = sdl.create_mammo_mask(image, check_mask=True)
-
-        # Some masks just won't play ball
-        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
-        if mask_idx > 0.8 or mask_idx < 0.1:
-            print('Failed to generate mask... ', view)
-            continue
-
-        # Multiply image by mask to make background 0
-        image *= mask
-
-        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
-        image = sdl.zoom_2D(image, [box_dims, box_dims])
-        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer+1)
-
-        # Normalize the mammograms using contrast localized adaptive histogram normalization
-        image = sdl.adaptive_normalization(image).astype(np.float32)
-
-        # Zero the background again.
-        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
-
-        # Save the data
-        data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
-                       'group': group, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
-
-        # Increment counters
-        index += 1
-        counter[cancer] += 1
-        pt += 1
-        del image, mask, labels
-
-    # Done with all patients
-    print('Made %s CALCS boxes from %s patients' % (index, pt,))
-
-    # Save the data. Saving with size 2 goes sequentially
-    sdl.save_dict_filetypes(data[0])
-    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/CALCS')
-
-
 def pre_process_PREV(box_dims=1024):
     """
-    Loads the chemoprevention
+    Loads the chemoprevention CC files
+    THESE ARE DEIDENTIFIED ON SKYNET!!
     :param box_dims: dimensions of the saved images
     :return:
     """
 
     # Load the filenames and randomly shuffle them
-    filenames = sdl.retreive_filelist('dcm', True, chemo_dir)
+    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Chemoprevention/'
+    filenames = sdl.retreive_filelist('dcm', True, path)
     shuffle(filenames)
+
+    # labels
+    lbl_csv = sdl.load_CSV_Dict('MRN', 'data/cprv_all.csv')
 
     # Include the baseline and follow up studies
     filenames = [x for x in filenames if '#' not in x]
@@ -343,23 +78,48 @@ def pre_process_PREV(box_dims=1024):
         Label = 1 if cancer, 0 if not 
         """
 
-        group = 'PREV'
-        patient = 'PREV' + file.split('/')[-4] + '_' + file.split('/')[-3].split(' ')[1] + '_'
-        if '5YR' in file:
-            patient += '5YR'
-        else:
-            patient += 'BASE'
-        view = patient + '_' + file.split('/')[-2].replace(' ', '')[:3]
-
-        # All of these are technically cancer
-        cancer = 1
-
         # Load and resize image
         try:
-            image, accno, shape, _, _ = sdl.load_DICOM_2D(file)
+            image, _, _, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
         except:
             print("Failed to load: ", file)
             continue
+
+        # Re-Identify the file and retreive info
+        info = sdl.ReID_DICOMs('@@Igadbrain316', file)
+        accno = info['Accession']
+        patient = info['MRN']
+        if '5YR' in file:
+            group = '5YR'
+        else:
+            group = 'BASE'
+        view = 'CPRV_' + accno + '_' + file.split('/')[-2].replace(' ', '')[:3]
+        try:
+            label = lbl_csv[patient]
+        except:
+            try:
+                break_sig = False
+                for mr, dic in lbl_csv.items():
+                    if break_sig: break
+                    for key, val in dic.items():
+                        if val == accno:
+                            label = dic
+                            break_sig = True
+                            break
+            except Exception as e:
+                print('No Label: ', e)
+                continue
+
+        # CC Only
+        if 'CC' not in view and 'XCC' not in view: continue
+
+        # Get cancer and prev status
+        if 'Y' in label['Chemoprevention']:
+            treated = '1'
+        else:
+            treated = '0'
+        cancer = 1
 
         """
         We have two methods to generate breast masks, they fail on different examples. 
@@ -375,7 +135,10 @@ def pre_process_PREV(box_dims=1024):
             continue
 
         # Multiply image by mask to make background 0
-        image *= mask
+        try:
+            image *= mask
+        except:
+            continue
 
         # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
         image = sdl.zoom_2D(image, [box_dims, box_dims])
@@ -389,7 +152,7 @@ def pre_process_PREV(box_dims=1024):
 
         # Save the data
         data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
-                       'group': group, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
+                       'group': treated, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
 
         # Increment counters
         index += 1
@@ -401,8 +164,126 @@ def pre_process_PREV(box_dims=1024):
     print('Made %s Chemoprevention boxes from %s patients' % (index, pt,))
 
     # Save the data.
-    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/PREV')
+    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/CPRV_B5_CC')
 
+
+def pre_process_1YR(box_dims=1024):
+    """
+    Loads the 1yr followup chemoprevention files
+    :param box_dims: dimensions of the saved images
+    From the reprocessed files which should be all CC views
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Reprocessed_1k/'
+    filenames = sdl.retreive_filelist('dcm', True, path)
+    shuffle(filenames)
+
+    # labels
+    lbl_csv = sdl.load_CSV_Dict('MRN', 'data/cprv_all.csv')
+
+    # Global variables
+    display, counter, data, data_test, index, pt = [], [0, 0, 0], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number
+        All of these are DICOMs
+        View = unique to that view (BRCA_Cancer_1_LCC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        # Load the Dicom
+        try:
+            image, accno, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        # Retreive the info
+        base, folder = os.path.basename(file).split('.')[0], os.path.dirname(file)
+        proj = base.split('_')[-1] + '1YR'
+        _indexID = base.split('_')[-2]
+        patient = header['tags'].PatientID
+
+        # Set info
+        view = 'CPRV_' + accno + '_' + proj
+        group = '1YR'
+        try:
+            label = lbl_csv[patient]
+        except:
+            try:
+                break_sig = False
+                for mr, dic in lbl_csv.items():
+                    if break_sig: break
+                    for key, val in dic.items():
+                        if val == accno:
+                            label = dic
+                            break_sig = True
+                            break
+            except Exception as e:
+                print('No Label: ', e)
+                continue
+
+        # Only work on the 1 year followups
+        if label['Acc_1yr'] != accno: continue
+
+        # Get cancer and prev status
+        if 'Y' in label['Chemoprevention']:
+            treated = '1'
+        else:
+            treated = '0'
+        cancer = 1
+
+        """
+                We have two methods to generate breast masks, they fail on different examples. 
+                Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+                So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        try:
+            image *= mask
+        except:
+            print('Failed to apply mask... ', view, image.shape, image.dtype, mask.shape, mask.dtype)
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Save the data
+        data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': treated, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s BRCA boxes from %s patients' % (index, pt,), counter)
+
+    # TODO: Save the data.
+    sdl.save_dict_filetypes(data[0])
+    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/CPRV_1YR_CC')
 
 # Load the protobuf
 def load_protobuf(training=True):
@@ -529,3 +410,5 @@ class DataPreprocessor(object):
     return data
 
 
+# pre_process_1YR(1024)
+pre_process_PREV(1024)
