@@ -18,8 +18,8 @@ FLAGS = tf.app.flags.FLAGS
 
 # Define the data directory to use
 home_dir = str(Path.home()) + '/PycharmProjects/Datasets/BreastData/Mammo/'
-
 risk_dir = home_dir + 'RiskStudy/'
+short_fu = risk_dir + '1yr_FU/Raw/'
 brca_dir = home_dir + 'BRCA/'
 calc_dir = home_dir + 'Calcs/Eduardo/'
 chemo_dir = home_dir + 'Chemoprevention/'
@@ -28,7 +28,7 @@ sdl = SDL.SODLoader(data_root=home_dir)
 sdd = SDD.SOD_Display()
 
 
-def re_save_1k():
+def re_save_1k(type='CC'):
     """
     Loads the 1k chemoprevention files and resaves the DICOM
     :param box_dims: dimensions of the saved images
@@ -36,8 +36,9 @@ def re_save_1k():
     """
 
     # Load the filenames and randomly shuffle them
-    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Julia1k'
-    save_path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Reprocessed_1k/'
+    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/RiskStudy/1yr_FU/Raw/'
+    save_path_CC = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/RiskStudy/1yr_FU/Processed_CC/'
+    save_path_All = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/RiskStudy/1yr_FU/Processed_MLO_CC/'
     filenames = sdl.retreive_filelist('**', True, path)
     shuffle(filenames)
 
@@ -96,14 +97,20 @@ def re_save_1k():
         if SOD_SID > 1.25: continue
 
         # CC Only!!
-        if view != 'CC' and view != 'XCCL': continue
+        if type == 'CC':
+            if view != 'CC' and view != 'XCCL': continue
+        else:
+            if view != 'CC' and view != 'XCCL' and view != 'MLO': continue
 
         # Set info
         patient = '1YR_' + str(index)
         view = patient + '_' + laterality + view
 
         # Filename
-        savedir = (save_path + accno + '/')
+        if type == 'CC':
+            savedir = (save_path_CC + accno + '/')
+        else:
+            savedir = (save_path_All + accno + '/')
         savefile = savedir + view + '.dcm'
         if not os.path.exists(savedir): os.makedirs(savedir)
 
@@ -119,4 +126,5 @@ def re_save_1k():
     print('Done with %s images saved' % index)
 
 
-re_save_1k()
+re_save_1k('CC')
+re_save_1k('MLO')
