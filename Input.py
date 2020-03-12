@@ -15,6 +15,7 @@ Calcs:
 
 Chemoprevention:
 	(All just high risk ADH, LCIS and DCIS, no cancers)
+	CPRV Grp is low risk
 
 RiskStudy:
 	(201*2) RiskStudy/HighRisk/Cancer/4/imgxx.dcm (2 views each pt.)
@@ -176,7 +177,7 @@ def pre_process_1YR(box_dims=1024):
     """
 
     # Load the filenames and randomly shuffle them
-    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Reprocessed_1k/'
+    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Chemoprevention/1yr_FU/Processed_CC'
     filenames = sdl.retreive_filelist('dcm', True, path)
     shuffle(filenames)
 
@@ -206,15 +207,15 @@ def pre_process_1YR(box_dims=1024):
 
         # Retreive the info
         base, folder = os.path.basename(file).split('.')[0], os.path.dirname(file)
-        proj = base.split('_')[-1] + '1YR'
+        proj = base.split('_')[-1]
         _indexID = base.split('_')[-2]
-        patient = header['tags'].PatientID
+        MRN = header['tags'].PatientID
 
         # Set info
-        view = 'CPRV_' + accno + '_' + proj
+        view = 'CPRV1yr_' + MRN + '_' + accno + '_' + proj
         group = '1YR'
         try:
-            label = lbl_csv[patient]
+            label = lbl_csv[MRN]
         except:
             try:
                 break_sig = False
@@ -235,9 +236,10 @@ def pre_process_1YR(box_dims=1024):
         # Get cancer and prev status
         if 'Y' in label['Chemoprevention']:
             treated = '1'
+            cancer = 0
         else:
             treated = '0'
-        cancer = 1
+            cancer = 1
 
         """
                 We have two methods to generate breast masks, they fail on different examples. 
@@ -270,7 +272,7 @@ def pre_process_1YR(box_dims=1024):
 
         # Save the data
         data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
-                       'group': treated, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
+                       'group': treated, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
 
         # Increment counters
         index += 1
@@ -283,7 +285,7 @@ def pre_process_1YR(box_dims=1024):
 
     # TODO: Save the data.
     sdl.save_dict_filetypes(data[0])
-    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/CPRV_1YR_CC')
+    sdl.save_tfrecords(data, 1, file_root='data/CPRV_1YR_CC')
 
 # Load the protobuf
 def load_protobuf(training=True):
@@ -410,5 +412,5 @@ class DataPreprocessor(object):
     return data
 
 
-# pre_process_1YR(1024)
-pre_process_PREV(1024)
+pre_process_1YR(1024)
+# pre_process_PREV(1024)

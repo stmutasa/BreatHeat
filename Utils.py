@@ -30,7 +30,7 @@ sdd = SDD.SOD_Display()
 
 def re_save_1k(type='CC'):
     """
-    Loads the 1k chemoprevention files and resaves the DICOM
+    Loads the 1 year followup chemoprevention files and resaves the CC and/or MLO DICOM
     :param box_dims: dimensions of the saved images
     :return:
     """
