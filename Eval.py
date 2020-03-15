@@ -24,12 +24,12 @@ FLAGS = tf.app.flags.FLAGS
 # tf.app.flags.DEFINE_integer('epoch_size', 371, """Risk 1""")
 # tf.app.flags.DEFINE_integer('epoch_size', 1809, """1kCC - 201""")
 # tf.app.flags.DEFINE_integer('epoch_size', 3699, """1kCCMLO - 137""")
-tf.app.flags.DEFINE_integer('epoch_size', 4061, """Chemoprevention - 131""")
-tf.app.flags.DEFINE_integer('batch_size', 131, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 1895, """Chemoprevention - 131""")
+tf.app.flags.DEFINE_integer('batch_size', 379, """Number of images to process in a batch.""")
 
 # Testing parameters
 tf.app.flags.DEFINE_string('RunInfo', 'Initial_Dice/', """Unique file name for this training run""")
-tf.app.flags.DEFINE_integer('GPU', 1, """Which GPU to use""")
+tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 
 # Define some of the immutable variables
@@ -216,7 +216,7 @@ def test():
                     diff = High - Low
                     print('Epoch: %s, Diff: %.3f, AVG High: %.3f (%.3f), AVG Low: %.3f (%.3f)' % (
                         Epoch, diff, High, hstd, Low, lstd))
-                    #sdt.save_dic_csv(save_data, '1kCCMLO_UNet2.csv', index_name='ID')
+                    sdt.save_dic_csv(save_data, '1kCCMLO_UNet2.csv', index_name='ID')
 
                     # Now save the vizualizations
                     # sdl.save_gif_volume(np.asarray(display), ('testing/' + FLAGS.RunInfo + '/E_%s_Viz.gif' % Epoch), scale=0.5)

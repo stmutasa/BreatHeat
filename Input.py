@@ -46,27 +46,29 @@ chemo_dir = home_dir + 'Chemoprevention/'
 sdl = SDL.SODLoader(data_root=home_dir)
 sdd = SDD.SOD_Display()
 
-def pre_process_PREV(box_dims=1024):
+def pre_process_PREV(box_dims=1024, index=0):
+
     """
     Loads the chemoprevention CC files
-    THESE ARE DEIDENTIFIED ON SKYNET!!
+    THESE ARE DEIDENTIFIED ON SKYNET!! - Makes the code different
     :param box_dims: dimensions of the saved images
     :return:
     """
 
     # Load the filenames and randomly shuffle them
-    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Chemoprevention/'
+    path = home_dir + 'Chemoprevention/'
     filenames = sdl.retreive_filelist('dcm', True, path)
     shuffle(filenames)
 
     # labels
     lbl_csv = sdl.load_CSV_Dict('MRN', 'data/cprv_all.csv')
 
-    # Include the baseline and follow up studies
+    # Include the baseline and follow up chemoprevention studies of the correct breast
+    filenames = [x for x in filenames if '1yr_FU' not in x]
     filenames = [x for x in filenames if '#' not in x]
 
     # Global variables
-    display, counter, data, index, pt = [], [0, 0], {}, 0, 0
+    display, counter, data, pt = [], [0, 0], {}, 0
 
     for file in filenames:
 
@@ -79,25 +81,23 @@ def pre_process_PREV(box_dims=1024):
         Label = 1 if cancer, 0 if not 
         """
 
-        # Load and resize image
+        # CC Only
+        if 'CC' not in file and 'XCC' not in file: continue
+
+        # Load the Dicom
         try:
-            image, _, _, _, header = sdl.load_DICOM_2D(file)
+            image, accno, photo, _, header = sdl.load_DICOM_2D(file)
             shape = image.shape
-        except:
-            print("Failed to load: ", file)
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
             continue
 
         # Re-Identify the file and retreive info
-        info = sdl.ReID_DICOMs('@@Igadbrain316', file)
-        accno = info['Accession']
-        patient = info['MRN']
-        if '5YR' in file:
-            group = '5YR'
-        else:
-            group = 'BASE'
-        view = 'CPRV_' + accno + '_' + file.split('/')[-2].replace(' ', '')[:3]
+        MRN = header['tags'].PatientID
+
         try:
-            label = lbl_csv[patient]
+            label = lbl_csv[MRN]
         except:
             try:
                 break_sig = False
@@ -112,15 +112,22 @@ def pre_process_PREV(box_dims=1024):
                 print('No Label: ', e)
                 continue
 
-        # CC Only
-        if 'CC' not in view and 'XCC' not in view: continue
+        # Default to not treated, yes cancer (all high risk)
+        treated, cancer = '0', 1
 
-        # Get cancer and prev status
-        if 'Y' in label['Chemoprevention']:
-            treated = '1'
+        if '5YR' in file:
+
+            view = 'CPRV5yr_' + MRN + '_' + accno + '_' + file.split('/')[-2].replace(' ', '')[:3]
+            # Get cancer and prev status
+            if 'Y' in label['Chemoprevention']:
+                treated = '1'
+                cancer = 0
+
         else:
-            treated = '0'
-        cancer = 1
+            view = 'CPRV0yr_' + MRN + '_' + accno + '_' + file.split('/')[-2].replace(' ', '')[:3]
+            cancer = 1
+            if 'Y' in label['Chemoprevention']: treated = '1'
+
 
         """
         We have two methods to generate breast masks, they fail on different examples. 
@@ -136,10 +143,8 @@ def pre_process_PREV(box_dims=1024):
             continue
 
         # Multiply image by mask to make background 0
-        try:
-            image *= mask
-        except:
-            continue
+        try: image *= mask
+        except: continue
 
         # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
         image = sdl.zoom_2D(image, [box_dims, box_dims])
@@ -153,7 +158,7 @@ def pre_process_PREV(box_dims=1024):
 
         # Save the data
         data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
-                       'group': treated, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
+                       'group': treated, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
 
         # Increment counters
         index += 1
@@ -164,11 +169,14 @@ def pre_process_PREV(box_dims=1024):
     # Done with all patients
     print('Made %s Chemoprevention boxes from %s patients' % (index, pt,))
 
-    # Save the data.
-    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/CPRV_B5_CC')
+    # # Save the data.
+    # sdl.save_tfrecords(data, 1, file_root='data/CPRV_B5_CC')
+    # sdd.display_volume(np.asarray(display, np.float32), True)
+    return data
 
 
 def pre_process_1YR(box_dims=1024):
+
     """
     Loads the 1yr followup chemoprevention files
     :param box_dims: dimensions of the saved images
@@ -177,7 +185,7 @@ def pre_process_1YR(box_dims=1024):
     """
 
     # Load the filenames and randomly shuffle them
-    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Chemoprevention/1yr_FU/Processed_CC'
+    path = home_dir + 'Chemoprevention/1yr_FU/Processed_CC'
     filenames = sdl.retreive_filelist('dcm', True, path)
     shuffle(filenames)
 
@@ -242,9 +250,9 @@ def pre_process_1YR(box_dims=1024):
             cancer = 1
 
         """
-                We have two methods to generate breast masks, they fail on different examples. 
-                Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
-                So then use method 2
+        We have two methods to generate breast masks, they fail on different examples. 
+        Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+        So then use method 2
         """
         mask = sdl.create_mammo_mask(image, check_mask=True)
 
@@ -283,12 +291,30 @@ def pre_process_1YR(box_dims=1024):
     # Done with all patients
     print('Made %s BRCA boxes from %s patients' % (index, pt,), counter)
 
-    # TODO: Save the data.
+    # # TODO: Save the data.
+    # sdl.save_dict_filetypes(data[0])
+    # sdl.save_tfrecords(data, 1, file_root='data/CPRV_1YR_CC')
+    return data
+
+
+def save_all():
+
+    # Run the 1yr
+    data = pre_process_1YR()
+    index = len(data)
+
+    # Run the others
+    data.update(pre_process_PREV(index=index))
+
+    # Save
     sdl.save_dict_filetypes(data[0])
-    sdl.save_tfrecords(data, 1, file_root='data/CPRV_1YR_CC')
+    print ('Saving %s examples into 4 batches' %len(data))
+    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/PREV')
+
 
 # Load the protobuf
 def load_protobuf(training=True):
+
     """
     Loads the protocol buffer into a form to send to shuffle
     """
@@ -298,11 +324,8 @@ def load_protobuf(training=True):
     print('******** Loading Files: ', filenames)
     dataset = tf.data.TFRecordDataset(filenames)
 
-    # Repeat input indefinitely
-    dataset = dataset.repeat()
-
     # Shuffle the entire dataset then create a batch
-    if training: dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size)
+    if training: dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size).repeat(50)
 
     # Load the tfrecords into the dataset with the first map call
     _records_call = lambda dataset: \
@@ -321,10 +344,8 @@ def load_protobuf(training=True):
         dataset = dataset.map(DataPreprocessor(training), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     # Batch the dataset and drop remainder. Can try batch before map if map is small
-    dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True)
-
-    # cache and Prefetch
-    dataset = dataset.prefetch(buffer_size=FLAGS.batch_size)
+    if training: dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
+    else: dataset = dataset.batch(FLAGS.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 
     # Make an initializable iterator
     iterator = dataset.make_initializable_iterator()
@@ -412,5 +433,6 @@ class DataPreprocessor(object):
     return data
 
 
-pre_process_1YR(1024)
+# pre_process_1YR(1024)
 # pre_process_PREV(1024)
+# save_all()

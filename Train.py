@@ -15,11 +15,11 @@ tf.app.flags.DEFINE_integer('box_dims', 1024, """dimensions of the input picture
 tf.app.flags.DEFINE_integer('network_dims', 256, """the dimensions fed into the network""")
 
 # Define some of the immutable variables
-tf.app.flags.DEFINE_integer('num_epochs', 400, """Number of epochs to run""")
-tf.app.flags.DEFINE_integer('epoch_size', 1105, """How many examples""")
+tf.app.flags.DEFINE_integer('num_epochs', 300, """Number of epochs to run""")
+tf.app.flags.DEFINE_integer('epoch_size', 2808, """How many examples""")
 tf.app.flags.DEFINE_integer('print_interval', 10, """How often to print a summary to console during training""")
-tf.app.flags.DEFINE_integer('checkpoint_interval', 20, """How many Epochs to wait before saving a checkpoint""")
-tf.app.flags.DEFINE_integer('batch_size', 64, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('checkpoint_interval', 15, """How many Epochs to wait before saving a checkpoint""")
+tf.app.flags.DEFINE_integer('batch_size', 16, """Number of images to process in a batch.""")
 
 # Hyperparameters:
 tf.app.flags.DEFINE_float('dropout_factor', 0.5, """ Keep probability""")
@@ -35,7 +35,7 @@ tf.app.flags.DEFINE_float('beta2', 0.999, """ The beta 1 value for the adam opti
 
 # Directory control
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
-tf.app.flags.DEFINE_string('RunInfo', 'Fixed_Combined_Risk/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'RePrev/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 
 
@@ -119,47 +119,61 @@ def train():
 
                 # Run and time an iteration
                 start = time.time()
-                mon_sess.run(train_op, feed_dict={phase_train: True})
+                batch_count = 0
+                try:
+                    mon_sess.run(train_op, feed_dict={phase_train: True})
+                    batch_count += FLAGS.batch_size
+                except tf.errors.OutOfRangeError:
+                    print('*' * 10, '\n%s examples run, re-initializing iterator\n' % batch_count)
+                    batch_count = 0
+                    mon_sess.run(iterator.initializer)
                 timer += (time.time() - start)
 
                 # Calculate current epoch
                 Epoch = int((i * FLAGS.batch_size) / FLAGS.epoch_size)
 
-                # Console and Tensorboard print interval
-                if i % print_interval == 0:
+                try:
 
-                    # Load some metrics
-                    _labels, _loss, _l2loss = mon_sess.run([labels, loss, l2loss], feed_dict={phase_train: True})
+                    # Console and Tensorboard print interval
+                    if i % print_interval == 0:
 
-                    # Calculations to improve and get display
-                    _loss *= 1e3
-                    elapsed = timer / print_interval
-                    timer = 0
-                    now = datetime.datetime.now().strftime("%m-%d %H:%M:%S")
+                        # Load some metrics
+                        _labels, _loss, _l2loss = mon_sess.run([labels, loss, l2loss], feed_dict={phase_train: True})
 
-                    # Print the data
-                    np.set_printoptions(precision=2)
-                    print('-' * 70, '\n%s -- Epoch %d, (%.1f eg/s), Total Loss: %s, L2 Loss : %s'
-                          % (now, Epoch, FLAGS.batch_size / elapsed, _loss, _l2loss))
+                        # Calculations to improve and get display
+                        _loss *= 1e3
+                        elapsed = timer / print_interval
+                        timer = 0
+                        now = datetime.datetime.now().strftime("%m-%d %H:%M:%S")
 
-                    # Run a session to retrieve our summaries
-                    summary = mon_sess.run(all_summaries, feed_dict={phase_train: True})
+                        # Print the data
+                        np.set_printoptions(precision=2)
+                        print('-' * 70, '\n%s -- Epoch %d, (%.1f eg/s), Total Loss: %s, L2 Loss : %s'
+                              % (now, Epoch, FLAGS.batch_size / elapsed, _loss, _l2loss))
 
-                    # Add the summaries to the protobuf for Tensorboard
-                    summary_writer.add_summary(summary, i)
+                        # Run a session to retrieve our summaries
+                        summary = mon_sess.run(all_summaries, feed_dict={phase_train: True})
 
-                if i % checkpoint_interval == 0:
+                        # Add the summaries to the protobuf for Tensorboard
+                        summary_writer.add_summary(summary, i)
 
-                    print('-' * 70, '\nSaving... GPU: %s, File:%s' % (FLAGS.GPU, FLAGS.RunInfo[:-1]))
+                    if i % checkpoint_interval == 0:
 
-                    # Define the filename
-                    file = ('Epoch_%s' % Epoch)
+                        print('-' * 70, '\nSaving... GPU: %s, File:%s' % (FLAGS.GPU, FLAGS.RunInfo[:-1]))
 
-                    # Define the checkpoint file:
-                    checkpoint_file = os.path.join(FLAGS.train_dir + FLAGS.RunInfo, file)
+                        # Define the filename
+                        file = ('Epoch_%s' % Epoch)
 
-                    # Save the checkpoint
-                    saver.save(mon_sess, checkpoint_file)
+                        # Define the checkpoint file:
+                        checkpoint_file = os.path.join(FLAGS.train_dir + FLAGS.RunInfo, file)
+
+                        # Save the checkpoint
+                        saver.save(mon_sess, checkpoint_file)
+
+                except tf.errors.OutOfRangeError:
+                    print('*' * 10, time.time(), '\nOut of Range error: re-initializing iterator')
+                    batch_count = 0
+                    mon_sess.run(iterator.initializer)
 
 
 def main(argv=None):  # pylint: disable=unused-argument

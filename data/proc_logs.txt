@@ -73,5 +73,12 @@ Saving segregated tfrecords... 86 in data/CPRV_1YR_CC_1
 Saving segregated tfrecords... 97 in data/CPRV_1YR_CC_2
 Saving segregated tfrecords... 103 in data/CPRV_1YR_CC_3
 
+1yr followup: Made 1895 BRCA boxes from 1895 patients [546, 1349, 0]
+CPrev Others: Made 1941 Chemoprevention boxes from 1941 patients
 
+PREV Only: Made 3836 Chemoprevention boxes from 1941 patients
+Saving segregated tfrecords... 989 in data/PREV_0
+Saving segregated tfrecords... 875 in data/PREV_1
+Saving segregated tfrecords... 1028 in data/PREV_2
+Saving segregated tfrecords... 944 in data/PREV_3
 
