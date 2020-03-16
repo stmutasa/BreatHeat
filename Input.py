@@ -325,7 +325,7 @@ def load_protobuf(training=True):
     dataset = tf.data.TFRecordDataset(filenames)
 
     # Shuffle the entire dataset then create a batch
-    if training: dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size).repeat(50)
+    if training: dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size // 2).repeat(30)
 
     # Load the tfrecords into the dataset with the first map call
     _records_call = lambda dataset: \
