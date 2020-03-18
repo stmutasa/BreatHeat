@@ -19,11 +19,11 @@ _author_ = 'Simi'
 FLAGS = tf.app.flags.FLAGS
 
 # >5k example lesions total
-tf.app.flags.DEFINE_integer('epoch_size', 1028, """1yr 1895, Other 1941""")
-tf.app.flags.DEFINE_integer('batch_size', 257, """1yr 379, Other 647/3""")
+tf.app.flags.DEFINE_integer('epoch_size', 365, """1yr 1895, Other 1941""")
+tf.app.flags.DEFINE_integer('batch_size', 365, """1yr 379, Other 647/3""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'RePrev/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'NCombined1/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 tf.app.flags.DEFINE_integer('gifs', 0, """ save gifs or not""")
@@ -132,16 +132,19 @@ def test():
                     heatmap_high = _softmax_map[..., 1]
                     heatmap_low = _softmax_map[..., 0]
 
+                    # # Make the data array to save
+                    # save_data, base_Tr, fu_Tr, display = {}, [], [], []
+                    # base_Nt, fu_Nt = [], []
                     # Make the data array to save
-                    save_data, base_Tr, fu_Tr, display = {}, [], [], []
-                    base_Nt, fu_Nt = [], []
+                    save_data, low_scores, high_scores, display = {}, [], [], []
+                    low_std, high_std = [], []
                     for z in range(FLAGS.batch_size):
 
                         # Generate the dictionary
                         save_data[z] = {
                             'Accno': _data['accno'][z].decode('utf-8'),
                             'Cancer Label': int(_data['cancer'][z]),
-                            'Treated': int(_data['group'][z].decode('utf-8')),
+                            # 'Treated': int(_data['group'][z].decode('utf-8')),
                             'Image_Info': _data['view'][z].decode('utf-8'),
                             'Cancer Score': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean(),
                             'Benign Score': ma.masked_array(heatmap_low[z].flatten(), mask=~mask[z].flatten()).mean(),
@@ -152,20 +155,49 @@ def test():
                             'Variance': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).var(),
                         }
 
-                        # Append the scores
-                        if 'CPRV5yr_' in save_data[z]['Image_Info']:
-                            if save_data[z]['Treated'] == 1: fu_Tr.append(save_data[z]['Cancer Score'])
-                            else: fu_Nt.append(save_data[z]['Cancer Score'])
-                        else:
-                            if save_data[z]['Treated'] == 1: base_Tr.append(save_data[z]['Cancer Score'])
-                            else: base_Nt.append(save_data[z]['Cancer Score'])
+                        # # Append the scores
+                        # if 'CPRV5yr_' in save_data[z]['Image_Info']:
+                        #     if save_data[z]['Treated'] == 1: fu_Tr.append(save_data[z]['Cancer Score'])
+                        #     else: fu_Nt.append(save_data[z]['Cancer Score'])
+                        # else:
+                        #     if save_data[z]['Treated'] == 1: base_Tr.append(save_data[z]['Cancer Score'])
+                        #     else: base_Nt.append(save_data[z]['Cancer Score'])
+                        #
+                        # # Save the data array
+                        # baseTr_mean, fuTr_mean = float(np.mean(np.asarray(base_Tr))), float(np.mean(np.asarray(fu_Tr)))
+                        # baseNt_mean, fuNt_mean = float(np.mean(np.asarray(base_Nt))), float(np.mean(np.asarray(fu_Nt)))
+                        # diff_Tr, diff_Nt = baseTr_mean - fuTr_mean, baseNt_mean - fuNt_mean
+                        # print('Epoch: %s, TR-Diff: %.3f, NT-Diff: %.3f, Averages: BTr %.3f BNt %.3f FuTr %.3f FuNt %.3f'
+                        #       % (Epoch, diff_Tr, diff_Nt, baseTr_mean, baseNt_mean, fuTr_mean, fuNt_mean))
+                        # sdt.save_dic_csv(save_data, ('testing/' + FLAGS.RunInfo + '/E_%s_Data.csv' % Epoch),
+                        #                  index_name='ID')
 
-                    # Save the data array
-                    baseTr_mean, fuTr_mean = float(np.mean(np.asarray(base_Tr))), float(np.mean(np.asarray(fu_Tr)))
-                    baseNt_mean, fuNt_mean = float(np.mean(np.asarray(base_Nt))), float(np.mean(np.asarray(fu_Nt)))
-                    diff_Tr, diff_Nt = baseTr_mean - fuTr_mean, baseNt_mean - fuNt_mean
-                    print('Epoch: %s, TR-Diff: %.3f, NT-Diff: %.3f, Averages: BTr %.3f BNt %.3f FuTr %.3f FuNt %.3f'
-                          % (Epoch, diff_Tr, diff_Nt, baseTr_mean, baseNt_mean, fuTr_mean, fuNt_mean))
+                        # Append the scores
+                        if save_data[z]['Cancer Label'] == 1:
+                            high_scores.append(save_data[z]['Cancer Score'])
+                        else:
+                            low_scores.append(save_data[z]['Cancer Score'])
+                        if save_data[z]['Cancer Label'] == 1:
+                            high_std.append(save_data[z]['Standard Deviation'])
+                        else:
+                            low_std.append(save_data[z]['Standard Deviation'])
+
+                        # TODO: Make some corner pixels max and min for display purposes
+                        # Try: Tightening range, CV scaling
+                        image = np.copy(heatmap_high[z]) * mask[z]
+                        # max, min = 0.9, 0.2
+                        max, min = np.max(heatmap_high[z]), np.min(heatmap_high[z])
+                        image[0, 0] = max
+                        image[255, 255] = min
+                        image = np.clip(image, min, max)
+                        display.append(image)
+
+                        # Save the data array
+                    High, Low = float(np.mean(np.asarray(high_scores))), float(np.mean(np.asarray(low_scores)))
+                    hstd, lstd = float(np.mean(np.asarray(high_std))), float(np.mean(np.asarray(low_std)))
+                    diff = High - Low
+                    print('Epoch: %s, Diff: %.3f, AVG High: %.3f (%.3f), AVG Low: %.3f (%.3f)' % (
+                        Epoch, diff, High, hstd, Low, lstd))
                     sdt.save_dic_csv(save_data, ('testing/' + FLAGS.RunInfo + '/E_%s_Data.csv' % Epoch),
                                      index_name='ID')
 

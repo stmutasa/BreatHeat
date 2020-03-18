@@ -82,3 +82,15 @@ Saving segregated tfrecords... 875 in data/PREV_1
 Saving segregated tfrecords... 1028 in data/PREV_2
 Saving segregated tfrecords... 944 in data/PREV_3
 
+CC Only All: 5828
+Made 331 BRCA boxes from 331 patients [259, 72]
+Made 185 CALCS boxes from 185 patients
+Made 1941 Chemoprevention boxes from 1941 patients
+Made 1895 Chemoprevention boxes from 1895 patients [546, 1349, 0]
+Made 1476 RISK boxes from 1476 patients [1266, 210]
+Saving segregated tfrecords... 377 in data/RISK_0
+Saving segregated tfrecords... 355 in data/RISK_1
+Saving segregated tfrecords... 365 in data/RISK_2
+Saving segregated tfrecords... 379 in data/RISK_3
+
+

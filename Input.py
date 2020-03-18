@@ -15,6 +15,7 @@ Calcs:
 
 Chemoprevention:
 	(All just high risk ADH, LCIS and DCIS, no cancers)
+	F/U studies will be no cancer if the pt got CPREV
 	CPRV Grp is low risk
 
 RiskStudy:
@@ -46,8 +47,305 @@ chemo_dir = home_dir + 'Chemoprevention/'
 sdl = SDL.SODLoader(data_root=home_dir)
 sdd = SDD.SOD_Display()
 
-def pre_process_PREV(box_dims=1024, index=0):
 
+def pre_process_BRCA(box_dims=1024):
+    """
+    Loads the files to a protobuf
+    :param box_dims: dimensions of the saved images
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    filenames = sdl.retreive_filelist('dcm', True, brca_dir)
+    shuffle(filenames)
+
+    # Global variables
+    display, counter, data, data_test, index, pt = [], [0, 0], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number, two different if statements because...
+
+        # /BRCA/G3_Neg_NoMutations/3/Serxx.dcm
+        # /BRCA/G3_Neg_MinorMutations/3/Serxx.dcm
+        # /BRCA/G1_PosBRCA/NoCancer/Patient 1/L CC/Ser.dcm
+        # /BRCA/G1_PosBRCA/Cancer/Patient 1/L CC/Ser.dcm
+
+        We want: group = source of positive, brca vs risk 
+        Patient = similar to accession, (can have multiple views) (BRCApos_Cancer_1, BRCAneg_NoMutations_1)
+        View = unique to that view (BRCA_Cancer_1_LCC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        if 'G1_PosBRCA' in file:
+            patient = 'BRCApos_' + file.split('/')[-4] + '_' + file.split('/')[-3].split(' ')[-1]
+            view = patient + '_' + file.split('/')[-2].replace(' ', '')
+            if 'NoCancer' in file:
+                cancer = 0
+            else:
+                cancer = 1
+        else:
+            patient = 'BRCAneg_' + file.split('/')[-3].split('_')[-1] + '_' + file.split('/')[-2]
+            view = patient + '_' + file.split('/')[-1].split('.')[0][-1]
+            cancer = 0
+
+        # Load the Dicom
+        try:
+            image, accno, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        try:
+            if 'CC' not in str(header['tags'].ViewPosition): continue
+        except:
+            continue
+
+        """
+                We have two methods to generate breast masks, they fail on different examples. 
+                Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+                So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        try:
+            image *= mask
+        except:
+            print('Failed to apply mask... ', view, image.shape, image.dtype, mask.shape, mask.dtype)
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Risk = grp 1
+        group = 0
+
+        # Save the data
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': group, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s BRCA boxes from %s patients' % (index, pt,), counter)
+
+    # Save the data.
+    sdl.save_dict_filetypes(data[0])
+    sdl.save_tfrecords(data, 1, file_root='data/BRCA_CC')
+
+
+def pre_process_RISK(box_dims=1024):
+    """
+    Loads the files to a protobuf
+    :param box_dims: dimensions of the saved images
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    filenames = sdl.retreive_filelist('dcm', True, risk_dir)
+    shuffle(filenames)
+
+    # Global variables
+    display, counter, data, data_test, index, pt = [], [0, 0], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number...
+        # /RiskStudy/LowRisk/Normal/1/imgxxx.dcm (1+)
+        We want: group = source of positive, brca vs risk 
+        Patient = similar to accession, (can have multiple views) (RiskHigh_Cancer_1, RiskNl_Normal_1)
+        View = unique to that view
+        Label = 1 if cancer, 0 if not 
+        """
+
+        patient = file.split('/')[-4] + '_' + file.split('/')[-3] + '_' + file.split('/')[-2]
+        view = patient + '_' + file.split('/')[-1].split('.')[0][-1]
+        # if 'CC' not in view: continue
+
+        if 'Cancer' in file:
+            cancer = 1
+        else:
+            cancer = 0
+
+        # Load the Dicom
+        try:
+            image, accno, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        try:
+            if 'CC' not in str(header['tags'].ViewPosition): continue
+        except:
+            continue
+
+        """
+                We have two methods to generate breast masks, they fail on different examples. 
+                Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+                So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        image *= mask
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Risk = grp 1
+        group = 1
+
+        # Save the data
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': group, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s RISK boxes from %s patients' % (index, pt,), counter)
+
+    # Save the data.
+    sdl.save_dict_filetypes(data[0])
+    sdl.save_segregated_tfrecords(4, data, 'patient', 'data/RISK')
+
+
+def pre_process_CALCS(box_dims=1024):
+    """
+    Loads the files to a protobuf
+    :param box_dims: dimensions of the saved images
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    filenames = sdl.retreive_filelist('dcm', True, calc_dir)
+    shuffle(filenames)
+
+    # Don't include folder 3 or 4 dicoms
+    filenames = [x for x in filenames if '/1/' in x or '/2/' in x]
+
+    # Global variables
+    display, counter, data, index, pt = [], [0, 0], {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number
+
+        # /Calcs/Eduardo/ADH/Patient 25 YES/1/ser42096img00006.dcm'
+        We want: group = source of positive, brca vs risk 
+        Patient = similar to accession, (can have multiple views) (CALCSADH_19_YES)
+        View = unique to that view (CALCSADH_19_YES_CC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        patient = 'CALCS' + file.split('/')[-4] + '_' + file.split('/')[-3].split(' ')[1] + '_' + file.split('/')[-1].split('.')[0][-1]
+        view = patient + '_' + ('CC' if '/1/' in file else 'MLO')
+
+        # All of these are technically cancer
+        cancer = 1
+
+        # Load the Dicom
+        try:
+            image, accno, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        try:
+            if 'CC' not in str(header['tags'].ViewPosition): continue
+        except:
+            continue
+
+        """
+        We have two methods to generate breast masks, they fail on different examples. 
+        Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+        So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        image *= mask
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Risk = grp 1
+        group = 0
+
+        # Save the data
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': group, 'patient': patient, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s CALCS boxes from %s patients' % (index, pt,))
+
+    # Save the data. Saving with size 2 goes sequentially
+    sdl.save_dict_filetypes(data[0])
+    sdl.save_tfrecords(data, 1, file_root='data/CALCS_CC')
+
+
+def pre_process_PREV(box_dims=1024, index=0):
     """
     Loads the chemoprevention CC files
     THESE ARE DEIDENTIFIED ON SKYNET!! - Makes the code different
@@ -156,9 +454,12 @@ def pre_process_PREV(box_dims=1024, index=0):
         # Zero the background again.
         image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
 
+        # Risk = grp 1
+        group = 0
+
         # Save the data
-        data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
-                       'group': treated, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': group, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
 
         # Increment counters
         index += 1
@@ -169,10 +470,10 @@ def pre_process_PREV(box_dims=1024, index=0):
     # Done with all patients
     print('Made %s Chemoprevention boxes from %s patients' % (index, pt,))
 
-    # # Save the data.
-    # sdl.save_tfrecords(data, 1, file_root='data/CPRV_B5_CC')
+    # Save the data.
+    sdl.save_tfrecords(data, 1, file_root='data/CPRV_B5_CC')
     # sdd.display_volume(np.asarray(display, np.float32), True)
-    return data
+    # return data
 
 
 def pre_process_1YR(box_dims=1024):
@@ -278,9 +579,12 @@ def pre_process_1YR(box_dims=1024):
         # Zero the background again.
         image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
 
+        # Risk = grp 1
+        group = 0
+
         # Save the data
-        data[index] = {'data': image, 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
-                       'group': treated, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': group, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
 
         # Increment counters
         index += 1
@@ -289,12 +593,12 @@ def pre_process_1YR(box_dims=1024):
         del image, mask, labels
 
     # Done with all patients
-    print('Made %s BRCA boxes from %s patients' % (index, pt,), counter)
+    print('Made %s Chemoprevention 1yr boxes from %s patients' % (index, pt,), counter)
 
-    # # TODO: Save the data.
-    # sdl.save_dict_filetypes(data[0])
-    # sdl.save_tfrecords(data, 1, file_root='data/CPRV_1YR_CC')
-    return data
+    # TODO: Save the data.
+    sdl.save_dict_filetypes(data[0])
+    sdl.save_tfrecords(data, 1, file_root='data/CPRV_1YR_CC')
+    # return data
 
 
 def save_all():
@@ -314,38 +618,64 @@ def save_all():
 
 # Load the protobuf
 def load_protobuf(training=True):
-
     """
-    Loads the protocol buffer into a form to send to shuffle
+        Loads the protocol buffer into a form to send to shuffle. To oversample classes we made some mods...
+        Load with parallel interleave -> Prefetch -> Large Shuffle -> Parse labels -> Undersample map -> Flat Map
+        -> Prefetch -> Oversample Map -> Flat Map -> Small shuffle -> Prefetch -> Parse images -> Augment -> Prefetch -> Batch
     """
 
-    # Define filenames
-    filenames = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
-    print('******** Loading Files: ', filenames)
-    dataset = tf.data.TFRecordDataset(filenames)
+    # Lambda functions for retreiving our protobuf
+    _parse_all = lambda dataset: sdl.load_tfrecords(dataset, [FLAGS.box_dims, FLAGS.box_dims], tf.float16,
+                                                    segments='label_data', segments_dtype=tf.uint8,
+                                                    segments_shape=[FLAGS.box_dims, FLAGS.box_dims])
 
-    # Shuffle the entire dataset then create a batch
-    if training: dataset = dataset.shuffle(buffer_size=FLAGS.epoch_size // 2).repeat(30)
+    # Load tfrecords with parallel interleave if training
+    if training:
+        filenames = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
+        files = tf.data.Dataset.list_files(os.path.join(FLAGS.data_dir, '*.tfrecords'))
+        dataset = files.interleave(tf.data.TFRecordDataset, cycle_length=len(filenames),
+                                   num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        print('******** Loading Files: ', filenames)
+    else:
+        files = sdl.retreive_filelist('tfrecords', False, path=FLAGS.data_dir)
+        dataset = tf.data.TFRecordDataset(files, num_parallel_reads=1)
+        print('******** Loading Files: ', files)
 
-    # Load the tfrecords into the dataset with the first map call
-    _records_call = lambda dataset: \
-        sdl.load_tfrecords(dataset, [FLAGS.box_dims, FLAGS.box_dims], tf.float32,
-                           segments='label_data', segments_dtype=tf.uint8,
-                           segments_shape=[FLAGS.box_dims, FLAGS.box_dims])
+    # Shuffle and repeat if training phase
+    if training:
 
-    # Parse the record into tensors
-    dataset = dataset.map(_records_call, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        # Define our undersample and oversample filtering functions
+        _filter_fn = lambda x: sdl.undersample_filter(x['group'], actual_dists=[0.75, 0.25], desired_dists=[0.3, .7])
+        _undersample_filter = lambda x: dataset.filter(_filter_fn)
+        _oversample_filter = lambda x: tf.data.Dataset.from_tensors(x).repeat(
+            sdl.oversample_class(x['group'], actual_dists=[0.75, 0.25], desired_dists=[0.3, .7]))
 
-    # Fuse the mapping and batching
+        # Large shuffle, repeat for xx epochs then parse the labels only
+        dataset = dataset.shuffle(buffer_size=FLAGS.batch_size // 2)
+        dataset = dataset.repeat(20)
+        dataset = dataset.map(_parse_all, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+        # Now we have the labels, undersample then oversample.
+        dataset = dataset.map(_undersample_filter, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        dataset = dataset.flat_map(lambda x: x)
+        dataset = dataset.map(_oversample_filter, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        dataset = dataset.flat_map(lambda x: x)
+
+        # Now perform a small shuffle in case we duplicated neighbors, then prefetch before the final map
+        dataset = dataset.shuffle(buffer_size=FLAGS.batch_size)
+
+    else:
+        dataset = dataset.map(_parse_all, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
     scope = 'data_augmentation' if training else 'input'
     with tf.name_scope(scope):
-
-        # Map the data set
         dataset = dataset.map(DataPreprocessor(training), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    # Batch the dataset and drop remainder. Can try batch before map if map is small
-    if training: dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
-    else: dataset = dataset.batch(FLAGS.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+    # Batch and prefetch
+    if training:
+        dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
+    else:
+        dataset = dataset.batch(FLAGS.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 
     # Make an initializable iterator
     iterator = dataset.make_initializable_iterator()
@@ -367,6 +697,7 @@ class DataPreprocessor(object):
     if self._distords:  # Training
 
         # Expand dims by 1
+        data['data'] = tf.cast(data['data'], tf.float32)
         data['data'] = tf.expand_dims(data['data'], -1)
         data['label_data'] = tf.expand_dims(data['label_data'], -1)
 
@@ -421,6 +752,7 @@ class DataPreprocessor(object):
     else: # Testing
 
         # Expand dims by 1
+        data['data'] = tf.cast(data['data'], tf.float32)
         data['data'] = tf.expand_dims(data['data'], -1)
         data['label_data'] = tf.expand_dims(data['label_data'], -1)
 
@@ -432,7 +764,8 @@ class DataPreprocessor(object):
 
     return data
 
-
-# pre_process_1YR(1024)
-# pre_process_PREV(1024)
-# save_all()
+# pre_process_BRCA()
+# pre_process_RISK()
+# pre_process_CALCS()
+# pre_process_PREV()
+# pre_process_1YR()
