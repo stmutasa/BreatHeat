@@ -23,7 +23,7 @@ tf.app.flags.DEFINE_integer('epoch_size', 365, """1yr 1895, Other 1941""")
 tf.app.flags.DEFINE_integer('batch_size', 365, """1yr 379, Other 647/3""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'NCombined1/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'NDice/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 tf.app.flags.DEFINE_integer('gifs', 0, """ save gifs or not""")
