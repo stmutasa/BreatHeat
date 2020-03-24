@@ -602,6 +602,7 @@ def pre_process_1YR(box_dims=1024):
 
 
 def pre_process_ADJ(box_dims=1024):
+
     """
     Loads the Adjuvant endocrine therapy patients
     :param box_dims: dimensions of the saved images
@@ -673,7 +674,10 @@ def pre_process_ADJ(box_dims=1024):
         DxYr = '20' + label['DxDate'].split('/')[-1]
         TimeSince = 12 * (int(date[:4]) - int(DxYr)) + (int(date[4:6]) - int(label['DxDate'].split('/')[0]))
         TimeSince /= 12
-        TimeSince = int(round(TimeSince))
+        TimeSince = max(int(round(TimeSince)), 0)
+
+        # # TODO: Check timeSince
+        # print ('%s *** %s (%s - %s) M0? %s' %(view, TimeSince, date, label['DxDate'], label['M0']))
 
         # Get cancer and prev status
         CaSide, cancer = 'R', 0
@@ -685,7 +689,7 @@ def pre_process_ADJ(box_dims=1024):
         Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
         So then use method 2
         """
-        mask = sdl.create_mammo_mask(image, check_mask=True)
+        mask = sdl.create_mammo_mask(image, check_mask=True, debug=False)
 
         # Some masks just won't play ball
         mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
@@ -719,10 +723,10 @@ def pre_process_ADJ(box_dims=1024):
         pt += 1
 
         # Save after 2500
-        if index % 2500 == 0:
-            if index < 3000: sdl.save_dict_filetypes(data[0])
+        if index % 5000 == 0:
+            if index < 6000: sdl.save_dict_filetypes(data[0])
             print('Saving after %s patients' % pt)
-            sdl.save_tfrecords(data, 1, file_root=('data/ADJ%s_CC' % (index // 2500)))
+            sdl.save_tfrecords(data, 1, file_root=('data/test/ADJ%s_CC' % (index // 5000)))
             del data
             data = {}
 
@@ -732,7 +736,7 @@ def pre_process_ADJ(box_dims=1024):
     print('Made %s Adjuvant boxes from %s patients' % (index, pt,), counter)
 
     # TODO: Save the data.
-    if data: sdl.save_tfrecords(data, 1, file_root='data/ADJ_Fin')
+    if data: sdl.save_tfrecords(data, 1, file_root='data/test/ADJ_Fin')
     # return data
 
 
@@ -903,4 +907,4 @@ class DataPreprocessor(object):
 # pre_process_CALCS()
 # pre_process_PREV()
 # pre_process_1YR()
-# pre_process_ADJ()
+pre_process_ADJ()

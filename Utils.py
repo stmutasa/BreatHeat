@@ -226,4 +226,57 @@ def re_save_adjuvant(type='CC'):
     print('Done with %s images saved' % index)
 
 
-re_save_adjuvant('CC')
+def save_date_adj():
+    """
+    Saves the date of each adjuvant file into an accno key dict
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = home_dir + 'Adjuvant/Processed_CC/'
+    filenames = sdl.retreive_filelist('**', True, path)
+
+    # Global variables
+    data = {}
+    index = 0
+
+    for file in filenames:
+
+        # Load the Dicom
+        try:
+            header = sdl.load_DICOM_Header(file, multiple=False)
+            accno = file.split('/')[-2]
+            series = str(header['tags'].SeriesDescription)
+        except:
+            continue
+
+        # Skip non breasts
+        if 'BREAST' not in header['tags'].BodyPartExamined: continue
+
+        # Skip mag views based on SOD/SID
+        try:
+            SOD = header['tags'].DistanceSourceToPatient
+            SID = header['tags'].DistanceSourceToDetector
+            SOD_SID = int(SID) / int(SOD)
+        except:
+            continue
+        if SOD_SID > 1.25: continue
+
+        # Get date
+        try:
+            date = str(header['tags'].AcquisitionDate)
+        except:
+            try:
+                date = str(header['tags'].ContentDate)
+            except:
+                date = str(header['tags'].SeriesDate)
+        if not date: date = str(header['tags'].SeriesDate)
+
+        data[accno] = {'date': date, 'desc': series}
+        index += 1
+        if index % 1000 == 0: print(index, ' done.')
+
+    sdl.save_Dict_CSV(data, 'dates.csv')
+    print('Done with %s images saved' % len(data))
+
+
+save_date_adj()

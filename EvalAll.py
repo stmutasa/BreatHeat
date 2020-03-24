@@ -280,7 +280,7 @@ def stats_adj(_softmax_map, _data, index):
         # Generate the dictionary
         save_data[index + z] = {
             'Accno': _data['accno'][z].decode('utf-8'),
-            'Time Since Dx': int(_data['cancer'][z]),
+            'Time Since Dx': int(_data['group'][z]),
             'Image_Info': _data['view'][z].decode('utf-8'),
             'Risk Score': ma.masked_array(heatmap_high[z].flatten(), mask=~mask[z].flatten()).mean(),
         }
