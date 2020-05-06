@@ -279,4 +279,47 @@ def save_date_adj():
     print('Done with %s images saved' % len(data))
 
 
-save_date_adj()
+def save_date_risk():
+
+    """
+    Saves the date of each positive RISK file into an accno key dict
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = risk_dir
+    filenames = sdl.retreive_filelist('**', True, path)
+
+    # Global variables
+    data = {}
+    index = 0
+
+    for file in filenames:
+
+        # Load the Dicom
+        try:
+            header = sdl.load_DICOM_Header(file, multiple=False)
+            accno = header['tags'].StudyID
+            series = str(header['tags'].SeriesDescription)
+        except:
+            continue
+
+        # Get date
+        try:
+            date = str(header['tags'].AcquisitionDate)
+        except:
+            try:
+                date = str(header['tags'].ContentDate)
+            except:
+                date = str(header['tags'].SeriesDate)
+        if not date: date = str(header['tags'].SeriesDate)
+
+        data[accno] = {'date': date, 'desc': series}
+        index += 1
+        if index % 1000 == 0: print(index, ' done.')
+
+    sdl.save_Dict_CSV(data, 'Risk_dates.csv')
+    print('Done with %s images saved' % len(data))
+
+
+#save_date_adj()
+save_date_risk()
