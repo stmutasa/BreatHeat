@@ -20,10 +20,10 @@ FLAGS = tf.app.flags.FLAGS
 
 # >5k example lesions total
 tf.app.flags.DEFINE_integer('epoch_size', 14000, """1yr 1895, Other 1941""")
-tf.app.flags.DEFINE_integer('batch_size', 175, """1yr 379, Other 647/3""")
+tf.app.flags.DEFINE_integer('batch_size', 1400, """1yr 379, Other 647/3""")
 
-# Testing parameters. NC e14 ufixed2 e40, comb2 #2,
-tf.app.flags.DEFINE_string('RunInfo', 'Combined2/', """Unique file name for this training run""")
+# Testing parameters. Initial_Dice e74, Combined2 e
+tf.app.flags.DEFINE_string('RunInfo', 'Initial_Dice/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 tf.app.flags.DEFINE_integer('gifs', 0, """ save gifs or not""")
@@ -112,31 +112,40 @@ def test():
                 step, index, save_data = 0, 0, {}
                 max_steps = int(FLAGS.epoch_size / FLAGS.batch_size)
 
-                try:
-                    while step < max_steps:
+                while step < max_steps:
 
-                        # Load some metrics for testing
-                        _softmax_map, _data = mon_sess.run([softmax_map, data], feed_dict={phase_train: False})
+                    # Load some metrics for testing
+                    _softmax_map, _data = mon_sess.run([softmax_map, data], feed_dict={phase_train: False})
 
-                        # Increment step
-                        step += 1
+                    # Increment step
+                    step += 1
 
-                        # Update save data
-                        save_data.update(stats_adj(_softmax_map, _data, index))
-                        index += FLAGS.batch_size
+                    # Generate display maps
+                    mask = np.squeeze(_data['label_data'] > 0).astype(np.bool)
+                    heatmap_high = _softmax_map[..., 1]
 
-                except Exception as e:
-                    print('Training Stopped: ', e)
+                    # Make the data array to save
+                    for z in range(FLAGS.batch_size):
+                        # Make some corner pixels max and min for display purposes
+                        image = np.copy(heatmap_high[z]) * mask[z]
+                        max, min = np.max(heatmap_high[z]), np.min(heatmap_high[z])
+                        image[0, 0] = max
+                        image[255, 255] = min
+                        image = np.clip(image, min, max)
 
-                finally:
+                        # Generate save file name
+                        saveheat = 'testing/Viz/' + Epoch + _data['view'][z].decode('utf-8') + str(_data['cancer'][z]) + '.png'
+                        saveimg = 'testing/Viz/' + Epoch + _data['view'][z].decode('utf-8') + '_Raw' + '.png'
+                        saveheat, saveimg = saveheat.replace('ADJ', ''), saveimg.replace('ADJ', '')
 
-                    save_data = stats_adj_fin(save_data, Epoch)
-                    sdt.save_dic_csv(save_data, ('testing/' + FLAGS.RunInfo + '/E_%s_Data.csv' % Epoch), index_name='ID')
+                        # Save the file, use matplotlib to save a colormap, otherwise imageio
+                        plt.imsave(saveheat, image, cmap='jet')
+                        sdd.save_image(_data['data'][z], saveimg)
 
-                    del _data, _softmax_map, save_data
+                    del _data, _softmax_map, image
 
-                    # Shut down the session
-                    mon_sess.close()
+                # Shut down the session
+                mon_sess.close()
 
         plt.show()
 
