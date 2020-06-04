@@ -454,6 +454,124 @@ def eval_DLs():
     #     pt += 1
 
 
+def check_new(vtype='CC'):
+
+    """
+    Checks the missing files and sees whats up
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/ADJ2/'
+    filenames = sdl.retreive_filelist('**', True, path)
+
+    # Global variables
+    display, counter, skipped, data, dataf, index, pt = [], [0, 0], [], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number
+        All of these are DICOMs
+        View = unique to that view (BRCA_Cancer_1_LCC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        # Load the Dicom
+        try:
+            image, accno, _, _, header = sdl.load_DICOM_2D(file)
+        except Exception as e:
+            #print('DICOM Error: %s' % e)
+            dataf[index] = {'Accno': file.split('/')[-2], 'info': e}
+            index += 1
+            continue
+
+        # Retreive the view
+        try:
+            view = header['tags'].ViewPosition
+        except Exception as e:
+            #print('Header error: %s' % e)
+            dataf[index] = {'Accno': accno, 'info': e}
+            index += 1
+            continue
+
+        # Retreive the Laterality
+        try:
+            laterality = header['tags'].ImageLaterality
+        except:
+            try:
+                laterality = header['tags'].Laterality
+            except Exception as e:
+                #print('Header error: %s' % e)
+                dataf[index] = {'Accno': accno, 'info': e}
+                index += 1
+                continue
+
+        """
+            Some Mag views are still getting through
+            Also some negative photometrics are getting through
+                SID/SOD skips most
+                FieldOfViewDimensions? 
+                Tried and failed: DetectorBinning FocalSpots Grid np.max()
+                ViewPosition not CC or MLO
+        """
+
+        # Skip non breasts
+        if 'BREAST' not in header['tags'].BodyPartExamined:
+            dataf[index] = {'Accno': accno, 'info': header['tags'].BodyPartExamined}
+            index += 1
+            continue
+
+        # Skip mag views based on SOD/SID
+        try:
+            SOD = header['tags'].DistanceSourceToPatient
+            SID = header['tags'].DistanceSourceToDetector
+            SOD_SID = int(SID) / int(SOD)
+        except:
+            dataf[index] = {'Accno': accno, 'info': 'No SOD_SID'}
+            index += 1
+            continue
+        if SOD_SID > 1.25:
+            dataf[index] = {'Accno': accno, 'info': SOD_SID}
+            index += 1
+            continue
+
+        # CC Only!!
+        if vtype == 'CC':
+            if view != 'CC' and view != 'XCCL':
+                dataf[index] = {'Accno': accno, 'info': view}
+                index += 1
+                continue
+        else:
+            if view != 'CC' and view != 'XCCL' and view != 'MLO': continue
+
+        # Set info
+        pat = accno + '_' + laterality + view
+        data[index] = pat
+
+        if accno not in display: display.append(accno)
+        skipped.append(pat)
+        print (pat)
+
+        # Increment counters
+        index += 1
+        pt += 1
+
+    # Un-fail stage
+    print ('Removing fake failures')
+    dataf2 = dict(dataf)
+    for key, index in data.items():
+        for keyf, indexf in dataf.items():
+            if indexf['Accno'] == index.split('_')[0]:
+                if keyf in dataf2: del dataf2[keyf]
+
+
+    print('Done with %s patients saved. %s failure are now %s' % (len(display), len(dataf), len(dataf2)))
+    sdl.save_Dict_CSV(data, 'Saved.csv')
+    sdl.save_Dict_CSV(dataf2, 'failed.csv')
+    print ('K')
+
+
 #save_date_adj()
 #save_date_risk()
-eval_DLs()
+#eval_DLs()
+check_new()
