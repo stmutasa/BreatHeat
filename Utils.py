@@ -384,74 +384,6 @@ def eval_DLs():
                 #break
             except:
                 continue
-    #
-    # for file in filenames:
-    #
-    #     """
-    #     Retreive patient number
-    #     All of these are DICOMs
-    #     View = unique to that view (BRCA_Cancer_1_LCC)
-    #     Label = 1 if cancer, 0 if not
-    #     """
-    #
-    #     # Load the Dicom
-    #     try:
-    #         image, accno, _, _, header = sdl.load_DICOM_2D(file)
-    #     except Exception as e:
-    #         print('DICOM Error: %s' % e)
-    #         continue
-    #
-    #     # Retreive the view
-    #     try:
-    #         view = header['tags'].ViewPosition
-    #     except Exception as e:
-    #         print('Header error: %s' % e)
-    #         continue
-    #
-    #     # Retreive the Laterality
-    #     try:
-    #         laterality = header['tags'].ImageLaterality
-    #     except:
-    #         try:
-    #             laterality = header['tags'].Laterality
-    #         except Exception as e:
-    #             print('Header error: %s' % e)
-    #             continue
-    #
-    #     """
-    #         Some Mag views are still getting through
-    #         Also some negative photometrics are getting through
-    #             SID/SOD skips most
-    #             FieldOfViewDimensions?
-    #             Tried and failed: DetectorBinning FocalSpots Grid np.max()
-    #             ViewPosition not CC or MLO
-    #     """
-    #
-    #     # Skip non breasts
-    #     if 'BREAST' not in header['tags'].BodyPartExamined: continue
-    #
-    #     # Skip mag views based on SOD/SID
-    #     try:
-    #         SOD = header['tags'].DistanceSourceToPatient
-    #         SID = header['tags'].DistanceSourceToDetector
-    #         SOD_SID = int(SID) / int(SOD)
-    #     except:
-    #         continue
-    #     if SOD_SID > 1.25: continue
-    #
-    #     # CC Only!!
-    #     if type == 'CC':
-    #         if view != 'CC' and view != 'XCCL': continue
-    #     else:
-    #         if view != 'CC' and view != 'XCCL' and view != 'MLO': continue
-    #
-    #     # Set info
-    #     patient = 'ADJ_' + str(index)
-    #     view = patient + '_' + laterality + view
-    #
-    #     # Increment counters
-    #     index += 1
-    #     pt += 1
 
 
 def check_new(vtype='CC'):
@@ -571,7 +503,73 @@ def check_new(vtype='CC'):
     print ('K')
 
 
+def check_outside():
+
+    """
+    Checks the missing files and sees whats up
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/Adjuvant/Raw/'
+    root_dir = '/media/stmutasa/Slow1/PycharmProjects/Datasets/BreastData/Mammo/'
+    missings = sdl.load_CSV_Dict('ACC', root_dir + 'Adjuvant_Missing.csv')
+    filenames = sdl.retreive_filelist('*', True, path)
+
+    # Global variables
+    display, counter, skipped, data_test, index, pt = [], [0, 0], [], {}, 0, 0
+
+    # Loop through all the "missing" files
+    for acc, dic in missings.items():
+
+        # trackers
+        foex, fiex = False, False
+
+        # Make sure the folder even exists
+        for file in filenames:
+            rt = os.path.basename(file)
+            if acc == rt:
+                foex = True
+                break
+
+        if foex != True:
+            continue
+
+        # Make sure folder isn't empty
+        subfiles = sdl.retreive_filelist('**', True, file)
+        if len(subfiles) == 0:
+            continue
+
+        # Print the study description
+        for sfs in subfiles:
+            try:
+                hdr = sdl.load_DICOM_Header(sfs, False)
+                sdesc = hdr['tags'].StudyDescription
+                if not sdesc: continue
+                # Filter down to outside studies only
+                if 'OUTSIDE' not in sdesc: continue
+                if 'MR' in sdesc or 'US' in sdesc: continue
+                # Load the Dicom
+                try: image, accno, _, _, hdr = sdl.load_DICOM_2D(sfs)
+                except Exception as e:
+                    print('DICOM Error: %s' % e, sfs)
+                    continue
+
+                # Now only dealing with outside films with images
+                savename = 'data/saved/' + accno + '_' + str(index) + '.jpg'
+                savedcm = savename.replace('.jpg', '.dcm')
+
+                # Save the image
+                sdl.save_image(image, savename)
+                shutil.copyfile(sfs, savedcm)
+
+                # Increment
+                index += 1
+            except:
+                continue
+
+
 #save_date_adj()
 #save_date_risk()
 #eval_DLs()
-check_new()
+#check_new()
+#check_outside()
