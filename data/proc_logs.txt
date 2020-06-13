@@ -95,4 +95,6 @@ Saving segregated tfrecords... 379 in data/RISK_3
 
 ADJ: Made 14002 Adjuvant boxes from 14002 patients [13093, 909, 0]
 
+SPH: 3309 boxes made
+
 

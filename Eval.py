@@ -24,11 +24,11 @@ FLAGS = tf.app.flags.FLAGS
 # tf.app.flags.DEFINE_integer('epoch_size', 371, """Risk 1""")
 # tf.app.flags.DEFINE_integer('epoch_size', 1809, """1kCC - 201""")
 # tf.app.flags.DEFINE_integer('epoch_size', 3699, """1kCCMLO - 137""")
-tf.app.flags.DEFINE_integer('epoch_size', 1895, """Chemoprevention - 131""")
-tf.app.flags.DEFINE_integer('batch_size', 379, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 3300, """Chemoprevention - 131""")
+tf.app.flags.DEFINE_integer('batch_size', 330, """Number of images to process in a batch.""")
 
 # Testing parameters
-tf.app.flags.DEFINE_string('RunInfo', 'Initial_Dice/', """Unique file name for this training run""")
+tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
 tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 
@@ -204,7 +204,7 @@ def test():
                         save_file = save_file.replace('PREV', '')
                         if 'CC' not in save_file: continue
                         # sdd.save_image(image, save_file)
-                        plt.imsave(save_file, image, cmap='jet')
+                        # plt.imsave(save_file, image, cmap='jet')
 
                         # Generate image to append to display
                         # display.append(np.copy(heatmap_high[z]) * mask[z])

@@ -740,6 +740,187 @@ def pre_process_ADJ(box_dims=1024):
     # return data
 
 
+def pre_process_SPH(box_dims=1024):
+    """
+    Loads the data from the school of public health
+    :param box_dims: dimensions of the saved images
+    From the reprocessed files which should be all CC views
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = home_dir + 'SPH/'
+    filenames = sdl.retreive_filelist('*', True, path)
+
+    # Global variables
+    display, counter, data, data_test, index, pt = [], [0, 0, 0], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number
+        All of these are DICOMs
+        View = unique to that view (BRCA_Cancer_1_LCC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        # Load the Dicom
+        try:
+            image, _, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        # Retreive the info
+        MRN = os.path.basename(file)
+        accno = MRN
+        proj = header['tags'].ImageLaterality + header['tags'].ViewPosition
+
+        # Set info
+        view = 'SPH_' + MRN + '_' + proj
+        group = 'SPH'
+        label, cancer = 0, 0
+
+        """
+        We have two methods to generate breast masks, they fail on different examples. 
+        Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+        So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True, debug=False)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        try:
+            image *= mask
+        except:
+            print('Failed to apply mask... ', view, image.shape, image.dtype, mask.shape, mask.dtype)
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Save the data
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': group, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s Adjuvant boxes from %s patients' % (index, pt,), counter)
+
+    # TODO: Save the data.
+    sdl.save_dict_filetypes(data[0])
+    sdl.save_tfrecords(data, 3, file_root='data/test/SPH_')
+    # return data
+
+
+def pre_process_VitD(box_dims=1024):
+    """
+    Loads the data from the Dr. Crew Vitamin D study
+    :param box_dims: dimensions of the saved images
+    From the reprocessed files which should be all CC views
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = home_dir + 'VitD/'
+    filenames = sdl.retreive_filelist('dcm', True, path)
+
+    # Global variables
+    display, counter, data, data_test, index, pt = [], [0, 0, 0], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient info
+        """
+
+        # Load the Dicom
+        try:
+            image, _, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        # Retreive the info
+        MRN = os.path.basename(file)
+        accno = MRN
+        proj = header['tags'].ImageLaterality + header['tags'].ViewPosition
+
+        # Set info
+        view = 'SPH_' + MRN + '_' + proj
+        group = 'SPH'
+        label, cancer = 0, 0
+
+        """
+        We have two methods to generate breast masks, they fail on different examples. 
+        Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+        So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True, debug=False)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        try:
+            image *= mask
+        except:
+            print('Failed to apply mask... ', view, image.shape, image.dtype, mask.shape, mask.dtype)
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Save the data
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': group, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s Adjuvant boxes from %s patients' % (index, pt,), counter)
+
+    # TODO: Save the data.
+    sdl.save_dict_filetypes(data[0])
+    sdl.save_tfrecords(data, 3, file_root='data/test/SPH_')
+    # return data
+
+
 def save_all():
     # Run the 1yr
     data = pre_process_1YR()
@@ -908,3 +1089,5 @@ class DataPreprocessor(object):
 # pre_process_PREV()
 # pre_process_1YR()
 # pre_process_ADJ()
+# pre_process_SPH()
+# pre_process_VitD

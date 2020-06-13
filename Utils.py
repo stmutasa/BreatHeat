@@ -568,8 +568,396 @@ def check_outside():
                 continue
 
 
-#save_date_adj()
-#save_date_risk()
-#eval_DLs()
-#check_new()
-#check_outside()
+def save_new_ADJ():
+    """
+    Saves the redownloaded new baseline accession numbers to niice dicoms
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = home_dir + 'ADJ2/'
+    save_path_CC = home_dir + 'Adj2_Procd/'
+    filenames = sdl.retreive_filelist('**', True, path)
+
+    # Global variables
+    display, counter, skipped, data, dataf, index, pt = [], [0, 0], [], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number
+        All of these are DICOMs
+        View = unique to that view (BRCA_Cancer_1_LCC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        # Load the Dicom
+        try:
+            image, accno, _, _, header = sdl.load_DICOM_2D(file)
+        except Exception as e:
+            # print('DICOM Error: %s' % e)
+            dataf[index] = {'Accno': file.split('/')[-2], 'info': e}
+            index += 1
+            continue
+
+        # Retreive the view
+        try:
+            view = header['tags'].ViewPosition
+        except Exception as e:
+            # print('Header error: %s' % e)
+            dataf[index] = {'Accno': accno, 'info': e}
+            index += 1
+            continue
+
+        # Retreive the Laterality
+        try:
+            laterality = header['tags'].ImageLaterality
+        except:
+            try:
+                laterality = header['tags'].Laterality
+            except Exception as e:
+                # print('Header error: %s' % e)
+                dataf[index] = {'Accno': accno, 'info': e}
+                index += 1
+                continue
+
+        """
+            Some Mag views are still getting through
+            Also some negative photometrics are getting through
+                SID/SOD skips most
+                FieldOfViewDimensions? 
+                Tried and failed: DetectorBinning FocalSpots Grid np.max()
+                ViewPosition not CC or MLO
+        """
+
+        # Skip non breasts
+        if 'BREAST' not in header['tags'].BodyPartExamined:
+            dataf[index] = {'Accno': accno, 'info': header['tags'].BodyPartExamined}
+            index += 1
+            continue
+
+        # Skip mag views based on SOD/SID
+        try:
+            SOD = header['tags'].DistanceSourceToPatient
+            SID = header['tags'].DistanceSourceToDetector
+            SOD_SID = int(SID) / int(SOD)
+        except:
+            dataf[index] = {'Accno': accno, 'info': 'No SOD_SID'}
+            index += 1
+            continue
+        if SOD_SID > 1.25:
+            dataf[index] = {'Accno': accno, 'info': SOD_SID}
+            index += 1
+            continue
+
+        # CC Only!!
+        if view != 'CC' and view != 'XCCL':
+            dataf[index] = {'Accno': accno, 'info': view}
+            index += 1
+            continue
+
+        # Set info
+        patient = 'ADJ_' + str(index)
+        view = patient + '_' + laterality + view
+
+        # Filename
+        savedir = (save_path_CC + accno + '/')
+        savefile = savedir + view + '.dcm'
+        if not os.path.exists(savedir): os.makedirs(savedir)
+
+        # Copy to the destination folder
+        shutil.copyfile(file, savefile)
+        if index % 100 == 0 and index > 1:
+            print('\nSaving pt %s of %s to dest: %s_%s\n' % (index, len(filenames), accno, view))
+
+        # Increment counters
+        index += 1
+        pt += 1
+
+    print('Done with %s images saved' % index)
+
+
+def save_ADJ_Outside(box_dims=1024):
+    """
+        Saves the outside baseline mammograms to protocol buffers
+    """
+
+    # Load the filenames and randomly shuffle them
+    rawpath = home_dir + 'ADJOutside/Raw/'
+    lblpath = home_dir + 'ADJOutside/Picked/'
+    filenames = sdl.retreive_filelist('dcm', True, rawpath)
+    lblfiles = sdl.retreive_filelist('jpg', True, lblpath)
+
+    # labels
+    lbl_csv = sdl.load_CSV_Dict('MRN', 'data/Adj_labels.csv')
+
+    # Global variables
+    display, counter, skipped, data, dataf, index, pt = [], [0, 0], [], {}, {}, 0, 0
+
+    for file in filenames:
+
+        # Get baseline info
+        basename = os.path.basename(file)
+        save_index = basename.split('.')[0].split('_')[-1]
+        accno = basename.split('.')[0].split('_')[0]
+        proj = None
+
+        # Skip patients without labels
+        for _file in lblfiles:
+            _basename = os.path.basename(_file)
+            _save_index = _basename.split('.')[0].split('_')[-2]
+            _accno = _basename.split('.')[0].split('_')[0]
+            if _save_index == save_index and _accno == accno:
+                proj = _basename.split('.')[0].split('_')[-1]
+                break
+
+        if not proj: continue
+
+        """
+        Retreive patient info
+        """
+
+        # Load the Dicom
+        try:
+            image, _, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        # get the MRN
+        MRN = header['tags'].PatientID
+
+        # Set info
+        patient = 'ADJ2_' + MRN + '_' + accno
+        view = patient + '_' + proj
+        group = 'ADJ2'
+
+        # Get the date
+        try:
+            date = str(header['tags'].AcquisitionDate)
+        except:
+            try:
+                date = str(header['tags'].ContentDate)
+            except:
+                date = str(header['tags'].SeriesDate)
+
+        if not date: date = str(header['tags'].SeriesDate)
+        if not date: date = str(header['tags'].PerformedProcedureStepStartDate)
+
+        # Set info
+        try:
+            label = lbl_csv[MRN]
+        except:
+            try:
+                break_sig = False
+                for mr, dic in lbl_csv.items():
+                    if break_sig: break
+                    for key, val in dic.items():
+                        if val == accno:
+                            label = dic
+                            break_sig = True
+                            break
+            except Exception as e:
+                print('No Label: ', e)
+                continue
+
+        # Get the time since diagnosis date
+        DxYr = '20' + label['DxDate'].split('/')[-1]
+        TimeSince = 12 * (int(date[:4]) - int(DxYr)) + (int(date[4:6]) - int(label['DxDate'].split('/')[0]))
+        TimeSince /= 12
+        TimeSince = max(int(round(TimeSince)), 0)
+
+        # # TODO: Check timeSince
+        # print ('%s *** %s (%s - %s) M0? %s' %(view, TimeSince, date, label['DxDate'], label['M0']))
+
+        # Get cancer and prev status
+        CaSide, cancer = 'R', 0
+        if 'left' in label['Side']: CaSide = 'L'
+        if label['M0'] == accno and CaSide in proj: cancer = 1
+
+        """
+        We have two methods to generate breast masks, they fail on different examples. 
+        Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+        So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True, debug=False)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        mask = sdl.zoom_2D(mask.astype(np.int16), shape)
+        try:
+            image *= mask
+        except:
+            print('Failed to apply mask... ', view, image.shape, image.dtype, mask.shape, mask.dtype)
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Save the data
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': TimeSince, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s Adjuvant boxes from %s patients' % (index, pt,), counter)
+
+    # Save the data.
+    sdl.save_dict_filetypes(data[0])
+    print('Saving after %s patients' % pt)
+    sdl.save_tfrecords(data, 1, file_root=('data/test/ADJ2_Outside_CC'))
+
+
+def pre_process_ADJ2(box_dims=1024):
+    """
+    Loads the Adjuvant endocrine therapy patients from the second round of finding baseline studies...
+    :param box_dims: dimensions of the saved images
+    From the reprocessed files which should be all CC views
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = home_dir + 'Adj2_Procd/'
+    filenames = sdl.retreive_filelist('dcm', True, path)
+
+    # labels
+    lbl_csv = sdl.load_CSV_Dict('MRN', 'data/Adj_labels.csv')
+
+    # Global variables
+    display, counter, data, data_test, index, pt = [], [0, 0, 0], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number
+        All of these are DICOMs
+        View = unique to that view (BRCA_Cancer_1_LCC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        # Load the Dicom
+        try:
+            image, accno, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        # Retreive the info
+        base, folder = os.path.basename(file).split('.')[0], os.path.dirname(file)
+        proj = base.split('_')[-1]
+        MRN = str(header['tags'].PatientID)
+        try:
+            date = str(header['tags'].AcquisitionDate)
+        except:
+            try:
+                date = str(header['tags'].ContentDate)
+            except:
+                date = str(header['tags'].SeriesDate)
+        if not date: date = str(header['tags'].SeriesDate)
+
+        # Set info
+        view = 'ADJ2_' + MRN + '_' + accno + '_' + proj
+        group = 'ADJ2'
+        try:
+            label = lbl_csv[MRN]
+        except:
+            try:
+                break_sig = False
+                for mr, dic in lbl_csv.items():
+                    if break_sig: break
+                    for key, val in dic.items():
+                        if val == accno:
+                            label = dic
+                            break_sig = True
+                            break
+            except Exception as e:
+                print('No Label: ', e)
+                continue
+
+        # Get the time since diagnosis date
+        DxYr = '20' + label['DxDate'].split('/')[-1]
+        TimeSince = 12 * (int(date[:4]) - int(DxYr)) + (int(date[4:6]) - int(label['DxDate'].split('/')[0]))
+        TimeSince /= 12
+        TimeSince = max(int(round(TimeSince)), 0)
+
+        # Get cancer and prev status
+        CaSide, cancer = 'R', 0
+        if 'left' in label['Side']: CaSide = 'L'
+        if label['M0'] == accno and CaSide in proj: cancer = 1
+
+        """
+        We have two methods to generate breast masks, they fail on different examples. 
+        Use method 1 and if it generates a mask with >80% of pixels masked on < 10% we know it failed
+        So then use method 2
+        """
+        mask = sdl.create_mammo_mask(image, check_mask=True, debug=False)
+
+        # Some masks just won't play ball
+        mask_idx = np.sum(mask) / (image.shape[0] * image.shape[1])
+        if mask_idx > 0.8 or mask_idx < 0.1:
+            print('Failed to generate mask... ', view)
+            continue
+
+        # Multiply image by mask to make background 0
+        mask = sdl.zoom_2D(mask.astype(np.int16), shape)
+        try:
+            image *= mask
+        except:
+            print('Failed to apply mask... ', view, image.shape, image.dtype, mask.shape, mask.dtype)
+
+        # Resize and generate label mask. 0=background, 1=no cancer, 2 = cancer
+        image = sdl.zoom_2D(image, [box_dims, box_dims])
+        labels = sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims]).astype(np.uint8) * (cancer + 1)
+
+        # Normalize the mammograms using contrast localized adaptive histogram normalization
+        image = sdl.adaptive_normalization(image).astype(np.float32)
+
+        # Zero the background again.
+        image *= sdl.zoom_2D(mask.astype(np.int16), [box_dims, box_dims])
+
+        # Save the data
+        data[index] = {'data': image.astype(np.float16), 'label_data': labels, 'file': file, 'shapex': shape[0], 'shapy': shape[1],
+                       'group': TimeSince, 'patient': MRN, 'view': view, 'cancer': cancer, 'accno': accno}
+
+        # Increment counters
+        index += 1
+        counter[cancer] += 1
+        pt += 1
+
+        del image, mask, labels
+
+    # Done with all patients
+    print('Made %s Adjuvant boxes from %s patients' % (index, pt,), counter)
+
+    # Save data
+    print('Saving ADJ2 after %s patients' % pt)
+    sdl.save_tfrecords(data, 1, file_root=('data/test/ADJ2_CC'))
+
+# save_new_ADJ()
+# save_ADJ_Outside()
+# pre_process_ADJ2()
+# save_date_adj()
+# save_date_risk()
+# eval_DLs()
+# check_new()
+# check_outside()
