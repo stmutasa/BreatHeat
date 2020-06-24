@@ -953,6 +953,210 @@ def pre_process_ADJ2(box_dims=1024):
     print('Saving ADJ2 after %s patients' % pt)
     sdl.save_tfrecords(data, 1, file_root=('data/test/ADJ2_CC'))
 
+
+def save_ADJ_Outside_date(box_dims=1024):
+    """
+        Saves the outside baseline mammograms to protocol buffers
+    """
+
+    # Load the filenames and randomly shuffle them
+    rawpath = home_dir + 'ADJOutside/Raw/'
+    lblpath = home_dir + 'ADJOutside/Picked/'
+    filenames = sdl.retreive_filelist('dcm', True, rawpath)
+    lblfiles = sdl.retreive_filelist('jpg', True, lblpath)
+
+    # labels
+    lbl_csv = sdl.load_CSV_Dict('MRN', 'data/Adj_labels.csv')
+
+    # Global variables
+    display, counter, skipped, data, dataf, index, pt = [], [0, 0], [], {}, {}, 0, 0
+
+    for file in filenames:
+
+        # Get baseline info
+        basename = os.path.basename(file)
+        save_index = basename.split('.')[0].split('_')[-1]
+        accno = basename.split('.')[0].split('_')[0]
+        proj = None
+
+        # Skip patients without labels
+        for _file in lblfiles:
+            _basename = os.path.basename(_file)
+            _save_index = _basename.split('.')[0].split('_')[-2]
+            _accno = _basename.split('.')[0].split('_')[0]
+            if _save_index == save_index and _accno == accno:
+                proj = _basename.split('.')[0].split('_')[-1]
+                break
+
+        if not proj: continue
+
+        """
+        Retreive patient info
+        """
+
+        # Load the Dicom
+        try:
+            image, _, photo, _, header = sdl.load_DICOM_2D(file)
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        # get the MRN
+        MRN = header['tags'].PatientID
+
+        # Set info
+        patient = 'OUTSIDE_' + MRN + '_' + accno
+        view = patient + '_' + proj
+
+        # Get the date
+        try:
+            date = str(header['tags'].AcquisitionDate)
+        except:
+            try:
+                date = str(header['tags'].ContentDate)
+            except:
+                date = str(header['tags'].SeriesDate)
+
+        if not date: date = str(header['tags'].SeriesDate)
+        if not date: date = str(header['tags'].PerformedProcedureStepStartDate)
+
+        # Set info
+        try:
+            label = lbl_csv[MRN]
+        except:
+            try:
+                break_sig = False
+                for mr, dic in lbl_csv.items():
+                    if break_sig: break
+                    for key, val in dic.items():
+                        if val == accno:
+                            label = dic
+                            break_sig = True
+                            break
+            except Exception as e:
+                print('No Label: ', e)
+                continue
+
+        # Get the time since diagnosis date
+        DxYr = '20' + label['DxDate'].split('/')[-1]
+        TimeSince = 12 * (int(date[:4]) - int(DxYr)) + (int(date[4:6]) - int(label['DxDate'].split('/')[0]))
+        TimeSince /= 12
+        TimeSince = max(int(round(TimeSince)), 0)
+
+        # # TODO: Check timeSince
+        # print ('%s *** %s (%s - %s) M0? %s' %(view, TimeSince, date, label['DxDate'], label['M0']))
+
+        # Get cancer and prev status
+        CaSide, cancer = 'R', 0
+        if 'left' in label['Side']: CaSide = 'L'
+        if label['M0'] == accno and CaSide in proj: cancer = 1
+
+        # Get date
+        try:
+            date = str(header['tags'].AcquisitionDate)
+        except:
+            try:
+                date = str(header['tags'].ContentDate)
+            except:
+                date = str(header['tags'].SeriesDate)
+        if not date: date = str(header['tags'].SeriesDate)
+
+        data[accno] = {'date': date, 'desc': view, 'Time_Since_Dx': TimeSince}
+        index += 1
+        if index % 1000 == 0: print(index, ' done.')
+
+    sdl.save_Dict_CSV(data, 'Outside_dates.csv')
+    print('Done with %s images saved' % len(data))
+
+
+def pre_process_ADJ2_date(box_dims=1024):
+    """
+    Loads the Adjuvant endocrine therapy patients from the second round of finding baseline studies...
+    :param box_dims: dimensions of the saved images
+    From the reprocessed files which should be all CC views
+    :return:
+    """
+
+    # Load the filenames and randomly shuffle them
+    path = home_dir + 'Adj2_Procd/'
+    filenames = sdl.retreive_filelist('dcm', True, path)
+
+    # labels
+    lbl_csv = sdl.load_CSV_Dict('MRN', 'data/Adj_labels.csv')
+
+    # Global variables
+    display, counter, data, data_test, index, pt = [], [0, 0, 0], {}, {}, 0, 0
+
+    for file in filenames:
+
+        """
+        Retreive patient number
+        All of these are DICOMs
+        View = unique to that view (BRCA_Cancer_1_LCC)
+        Label = 1 if cancer, 0 if not 
+        """
+
+        # Load the Dicom
+        try:
+            image, accno, photo, _, header = sdl.load_DICOM_2D(file)
+            shape = image.shape
+            if photo == 1: image *= -1
+        except Exception as e:
+            print('Unable to Load DICOM file: %s - %s' % (e, file))
+            continue
+
+        # Retreive the info
+        base, folder = os.path.basename(file).split('.')[0], os.path.dirname(file)
+        proj = base.split('_')[-1]
+        MRN = str(header['tags'].PatientID)
+        try:
+            date = str(header['tags'].AcquisitionDate)
+        except:
+            try:
+                date = str(header['tags'].ContentDate)
+            except:
+                date = str(header['tags'].SeriesDate)
+        if not date: date = str(header['tags'].SeriesDate)
+
+        # Set info
+        view = 'ADJ2_' + MRN + '_' + accno + '_' + proj
+        group = 'ADJ2'
+        try:
+            label = lbl_csv[MRN]
+        except:
+            try:
+                break_sig = False
+                for mr, dic in lbl_csv.items():
+                    if break_sig: break
+                    for key, val in dic.items():
+                        if val == accno:
+                            label = dic
+                            break_sig = True
+                            break
+            except Exception as e:
+                print('No Label: ', e)
+                continue
+
+        # Get the time since diagnosis date
+        DxYr = '20' + label['DxDate'].split('/')[-1]
+        TimeSince = 12 * (int(date[:4]) - int(DxYr)) + (int(date[4:6]) - int(label['DxDate'].split('/')[0]))
+        TimeSince /= 12
+        TimeSince = max(int(round(TimeSince)), 0)
+
+        # Get cancer and prev status
+        CaSide, cancer = 'R', 0
+        if 'left' in label['Side']: CaSide = 'L'
+        if label['M0'] == accno and CaSide in proj: cancer = 1
+
+        data[accno] = {'date': date, 'desc': view, 'Time_Since_Dx': TimeSince}
+        index += 1
+        if index % 1000 == 0: print(index, ' done.')
+
+    sdl.save_Dict_CSV(data, 'ADJ2_dates.csv')
+    print('Done with %s images saved' % len(data))
+
+
 # save_new_ADJ()
 # save_ADJ_Outside()
 # pre_process_ADJ2()
@@ -961,3 +1165,5 @@ def pre_process_ADJ2(box_dims=1024):
 # eval_DLs()
 # check_new()
 # check_outside()
+save_ADJ_Outside_date()
+pre_process_ADJ2_date()

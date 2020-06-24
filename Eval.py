@@ -24,8 +24,10 @@ FLAGS = tf.app.flags.FLAGS
 # tf.app.flags.DEFINE_integer('epoch_size', 371, """Risk 1""")
 # tf.app.flags.DEFINE_integer('epoch_size', 1809, """1kCC - 201""")
 # tf.app.flags.DEFINE_integer('epoch_size', 3699, """1kCCMLO - 137""")
-tf.app.flags.DEFINE_integer('epoch_size', 3300, """Chemoprevention - 131""")
-tf.app.flags.DEFINE_integer('batch_size', 330, """Number of images to process in a batch.""")
+# tf.app.flags.DEFINE_integer('epoch_size', 3300, """Chemoprevention - 131""")
+# tf.app.flags.DEFINE_integer('batch_size', 330, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 1053, """Chemoprevention - 131""")
+tf.app.flags.DEFINE_integer('batch_size', 351, """Number of images to process in a batch.""")
 
 # Testing parameters
 tf.app.flags.DEFINE_string('RunInfo', 'UNet_Fixed2/', """Unique file name for this training run""")
@@ -216,7 +218,7 @@ def test():
                     diff = High - Low
                     print('Epoch: %s, Diff: %.3f, AVG High: %.3f (%.3f), AVG Low: %.3f (%.3f)' % (
                         Epoch, diff, High, hstd, Low, lstd))
-                    sdt.save_dic_csv(save_data, '1kCCMLO_UNet2.csv', index_name='ID')
+                    sdt.save_dic_csv(save_data, 'ADJ2_%s.csv' % FLAGS.RunInfo.replace('/', ''), index_name='ID')
 
                     # Now save the vizualizations
                     # sdl.save_gif_volume(np.asarray(display), ('testing/' + FLAGS.RunInfo + '/E_%s_Viz.gif' % Epoch), scale=0.5)
@@ -224,47 +226,13 @@ def test():
 
                     del heatmap_high, heatmap_low, mask, _data, _softmax_map
 
-                    # Lets save runs that perform well
-                    # if mcc >= best_MAE:
-                    #     # Save the checkpoint
-                    #     print(" ---------------- SAVING THIS ONE %s", ckpt.model_checkpoint_path)
-                    #
-                    #     # Define the filenames
-                    #     checkpoint_file = os.path.join('testing/' + FLAGS.RunInfo,
-                    #                                    ('Epoch_%s_DICE_%0.3f' % (Epoch, sdt.AUC)))
-                    #
-                    #     # Save the checkpoint
-                    #     saver.save(mon_sess, checkpoint_file)
-                    #
-                    #     # Save a new best MAE
-                    #     best_MAE = mcc
-                    #     best_epoch = Epoch
-
                     # Shut down the session
                     mon_sess.close()
-
-            # # Print divider
-            # print('-' * 70)
-            #
-            # # Otherwise check folder for changes
-            # filecheck = glob.glob(FLAGS.train_dir+FLAGS.RunInfo + '*')
-            # newfilec = filecheck
-            #
-            # # Sleep if no changes
-            # while filecheck == newfilec:
-            #     # Sleep
-            #     time.sleep(5)
-            #
-            #     # Recheck the folder for changes
-            #     newfilec = glob.glob(FLAGS.train_dir+FLAGS.RunInfo + '*')
             break
 
 
 def main(argv=None):  # pylint: disable=unused-argument
     time.sleep(FLAGS.sleep)
-    if tf.gfile.Exists('testing/' + FLAGS.RunInfo):
-        tf.gfile.DeleteRecursively('testing/' + FLAGS.RunInfo)
-    tf.gfile.MakeDirs('testing/' + FLAGS.RunInfo)
     test()
 
 if __name__ == '__main__':
