@@ -749,11 +749,12 @@ def pre_process_SPH(box_dims=1024):
     """
 
     # Load the filenames and randomly shuffle them
-    path = home_dir + 'SPH/'
+    path = home_dir + 'SPH2/'
     filenames = sdl.retreive_filelist('*', True, path)
 
     # Global variables
     display, counter, data, data_test, index, pt = [], [0, 0, 0], {}, {}, 0, 0
+    fail = 0
 
     for file in filenames:
 
@@ -775,12 +776,15 @@ def pre_process_SPH(box_dims=1024):
 
         # Retreive the info
         MRN = os.path.basename(file)
-        accno = MRN
-        proj = header['tags'].ImageLaterality + header['tags'].ViewPosition
+        accno = MRN.replace('.DCM', '').replace('.dcm', '')
+        try: proj = header['tags'].ImageLaterality + header['tags'].ViewPosition
+        except:
+            fail += 1
+            continue
 
         # Set info
-        view = 'SPH_' + MRN + '_' + proj
-        group = 'SPH'
+        view = accno
+        group = 'SPH2'
         label, cancer = 0, 0
 
         """
@@ -825,10 +829,11 @@ def pre_process_SPH(box_dims=1024):
 
     # Done with all patients
     print('Made %s Adjuvant boxes from %s patients' % (index, pt,), counter)
+    print (fail, ' failed...')
 
     # TODO: Save the data.
     sdl.save_dict_filetypes(data[0])
-    sdl.save_tfrecords(data, 3, file_root='data/test/SPH_')
+    sdl.save_tfrecords(data, 3, file_root='data/test/SPH2_')
     # return data
 
 
