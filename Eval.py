@@ -28,13 +28,15 @@ FLAGS = tf.app.flags.FLAGS
 # tf.app.flags.DEFINE_integer('batch_size', 330, """Number of images to process in a batch.""")
 # tf.app.flags.DEFINE_integer('epoch_size', 1053, """Chemoprevention - 131""")
 # tf.app.flags.DEFINE_integer('batch_size', 351, """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_integer('epoch_size', 2032, """SPH2 - 131""")
-tf.app.flags.DEFINE_integer('batch_size', 254, """Number of images to process in a batch.""")
+# tf.app.flags.DEFINE_integer('epoch_size', 2032, """SPH2 - 131""")
+# tf.app.flags.DEFINE_integer('batch_size', 254, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('epoch_size', 10962, """24k """)
+tf.app.flags.DEFINE_integer('batch_size', 203, """Number of images to process in a batch.""")
 
 # Testing parameters
 tf.app.flags.DEFINE_string('RunInfo', 'Combined2/', """Unique file name for this training run""")
 tf.app.flags.DEFINE_integer('GPU', 0, """Which GPU to use""")
-tf.app.flags.DEFINE_integer('sleep', 120, """ Time to sleep before starting test""")
+tf.app.flags.DEFINE_integer('sleep', 0, """ Time to sleep before starting test""")
 
 # Define some of the immutable variables
 tf.app.flags.DEFINE_string('train_dir', 'training/', """Directory to write event logs and save checkpoint files""")
@@ -151,6 +153,7 @@ def inference():
 
                         # Increment step
                         step += 1
+                        del _softmax_map_, _data_
 
                 except Exception as e:
                     print(e)
@@ -197,12 +200,12 @@ def inference():
                         Make some corner pixels max and min for display purposes
                         Good Display Runs: Unet_Fixed2 epoch 60, and Initial_Dice epoch 149
                         """
-                        image = np.copy(heatmap_high[z]) * mask[z]
+                        # image = np.copy(heatmap_high[z]) * mask[z]
                         # max, min = 0.9, 0.2
                         max, min = np.max(heatmap_high[z]), np.min(heatmap_high[z])
-                        image[0, 0] = max
-                        image[255, 255] = min
-                        image = np.clip(image, min, max)
+                        # image[0, 0] = max
+                        # image[255, 255] = min
+                        # image = np.clip(image, min, max)
                         # sdd.display_single_image(image, True, title=save_data[z]['Image_Info'], cmap='jet')
                         save_file = 'imgs/' + save_data[z]['Image_Info'] + '.png'
                         save_file = save_file.replace('PREV', '')
@@ -212,7 +215,7 @@ def inference():
 
                         # Generate image to append to display
                         # display.append(np.copy(heatmap_high[z]) * mask[z])
-                        display.append(image)
+                        #display.append(image)
 
                     # Save the data array
                     High, Low = float(np.mean(np.asarray(high_scores))), float(np.mean(np.asarray(low_scores)))
@@ -220,11 +223,11 @@ def inference():
                     diff = High - Low
                     print('Epoch: %s, Diff: %.3f, AVG High: %.3f (%.3f), AVG Low: %.3f (%.3f)' % (
                         Epoch, diff, High, hstd, Low, lstd))
-                    sdt.save_dic_csv(save_data, 'SPH2_%s.csv' % FLAGS.RunInfo.replace('/', ''), index_name='ID')
+                    sdt.save_dic_csv(save_data, '24k-_%s.csv' % FLAGS.RunInfo.replace('/', ''), index_name='ID')
 
                     # Now save the vizualizations
                     # sdl.save_gif_volume(np.asarray(display), ('testing/' + FLAGS.RunInfo + '/E_%s_Viz.gif' % Epoch), scale=0.5)
-                    sdd.display_volume(display, True, cmap='jet')
+                    # sdd.display_volume(display, True, cmap='jet')
 
                     del heatmap_high, heatmap_low, mask, _data, _softmax_map
 
